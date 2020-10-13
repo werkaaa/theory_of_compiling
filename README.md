@@ -1,3 +1,3 @@
-# theory_of_compiling
+# Theory of Compiling
 
-# Tabaluga
+Code for Theory of Compiling lab classes.
