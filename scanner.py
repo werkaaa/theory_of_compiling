@@ -1,3 +1,8 @@
+'''
+Script with Scanner class.
+
+For each lexem scanner returns its token, line number and the lexem itself.
+'''
 import ply.lex as lex
 
 class Scanner:
@@ -50,10 +55,10 @@ class Scanner:
   t_SUB = r'-'
   t_MUL = r'\*'
   t_DIV = r'/'
-  t_DOTADD = r'.\+'
-  t_DOTSUB = r'.-'
-  t_DOTMUL = r'.\*'
-  t_DOTDIV = r'./'
+  t_DOTADD = r'\.\+'
+  t_DOTSUB = r'\.-'
+  t_DOTMUL = r'\.\*'
+  t_DOTDIV = r'\./'
   t_ASSIGN = r'='
   t_SMALLER = r'<'
   t_GREATER = r'>'
@@ -67,7 +72,7 @@ class Scanner:
   t_MULASSIGN = r'\*='
   t_DIVASSIGN = r'/='
 
-  t_ignore = ' \t'
+  t_ignore = '  \t'
 
   # Builds the lexer
   def __init__(self, **kwargs):
@@ -80,7 +85,7 @@ class Scanner:
 
   # Token functions definitions
   def t_FLOATNUM(self, t):
-    r'((\d+\.\d*)|(\d*\.\d+))((E|e)-?\d+)?'
+    r'((\d+\.\d*)|(\d*\.\d+))((E|e)[+-]?\d+)?'
     t.value = float(t.value)
     return t
 
@@ -90,7 +95,7 @@ class Scanner:
     return t
 
   def t_STRING(self, t):
-    r'\"[^"\n]*\"'
+    r'"[^"\n]*"'
     t.value = t.value[1:-1]
     return t
 
@@ -107,12 +112,8 @@ class Scanner:
   # Informs about incorrect input
   def t_error(self, t):
     if t.value[0] == '"':
-      print(f'Error({t.lineno}): Illegal character \'"\'' +
-             ' - missing closing double-quote character in the line')
+      print(f'Error({t.lineno}): Illegal character \'"\''
+            ' - missing closing double-quote character in the line')
     else:
       print(f"Error({t.lineno}): Illegal character '{t.value[0]}'")
     t.lexer.skip(1)
-
-  # Builds the lexer
-  def build(self, **kwargs):
-    self.lexer = lex.lex(module=self, **kwargs)
