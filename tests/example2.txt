@@ -1,0 +1,8 @@
+if (existance_of_something is provable)
+    I_am_happy_today_therefore_I_am
+    Thank_you_Decartes
+else
+    tell_me(Doesnt_any_proof_need_logic_and_some_mind_to_exist_prior)
+    I_am_not_today_therefore_I_am_hot_nappy
+How_do_you_like_it_GE_MOORE_you_one_armed_bandit
+

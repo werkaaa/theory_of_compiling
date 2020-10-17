@@ -1,0 +1,18 @@
+A = 10lala;
+A = = == 00000.1e1;
+B = 000001
+A = 0;
+A = A'';
+" ''' Mój Wrogi Przyjacielu, liszę do Ciebie ten pist \\ ( ( ";
+# These lines are empty inside! Or are they?
+
+
+
+# This one is empty outside.
+
+""a"""""     # Odd number of quotes
+.
+x = "aa      # Mutiline string test 
+bb"
+""; # Empty string for You
+print();
