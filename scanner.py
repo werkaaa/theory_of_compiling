@@ -80,7 +80,7 @@ class Scanner:
 
   # Token functions definitions
   def t_FLOATNUM(self, t):
-    r'((\d+\.\d*)|(\d*\.\d+))((E|e)-?\d+)*'
+    r'((\d+\.\d*)|(\d*\.\d+))((E|e)-?\d+)?'
     t.value = float(t.value)
     return t
 
@@ -90,12 +90,13 @@ class Scanner:
     return t
 
   def t_STRING(self, t):
-    r'"\s*(\w*\s*)*"|\'\s*(\w*\s*)*\''
+    r'\"[^"\n]*\"'
     t.value = t.value[1:-1]
     return t
 
   def t_ID(self, t):
     r'[a-zA-Z_]\w*'
+    t.type = Scanner.reserved.get(t.value, 'ID')
     return t
 
   # Counts new lines
@@ -105,7 +106,11 @@ class Scanner:
 
   # Informs about incorrect input
   def t_error(self, t):
-    print("Illegal character '%s'" % t.value[0])
+    if t.value[0] == '"':
+      print(f'Error({t.lineno}): Illegal character \'"\'' +
+             ' - missing closing double-quote character in the line')
+    else:
+      print(f"Error({t.lineno}): Illegal character '{t.value[0]}'")
     t.lexer.skip(1)
 
   # Builds the lexer
