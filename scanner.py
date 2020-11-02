@@ -25,7 +25,7 @@ class Scanner:
 
   # Tokens declaration
   tokens = [
-      'ADD',
+       'ADD',
       'SUB',
       'MUL',
       'DIV',
@@ -85,7 +85,7 @@ class Scanner:
 
   # Token functions definitions
   def t_FLOATNUM(self, t):
-    r'((\d+\.\d*)|(\d*\.\d+))((E|e)[+-]?\d+)?'
+    r'((\d+\.\d*)|(\.\d+))((E|e)[+-]?\d+)?'
     t.value = float(t.value)
     return t
 

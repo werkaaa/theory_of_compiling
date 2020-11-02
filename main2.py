@@ -3,7 +3,7 @@ import sys
 import scanner
 
 # For portability
-default_test_file_path = ['tests', 'example_full.txt']
+default_test_file_path = ['tests', 'example1.txt']
 
 def main():
   try:
