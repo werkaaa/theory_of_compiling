@@ -38,11 +38,11 @@ class Parser:
       print("Unexpected end of input")
 
   def p_program(self, p):
-    """PROGRAM : INSTRUCTIONS_OPT"""
+    """PROGRAM : INSTRUCTIONS_OPT """
     p[0] = p[1]
 
   def p_empty(self, p):
-    """EMPTY :"""
+    """EMPTY : """
     pass
 
   def p_instructions_opt(self, p):
@@ -51,7 +51,7 @@ class Parser:
     p[0] = p[1]
 
   def p_block_of_instructions(self, p):
-    """BLOCK : '{' INSTRUCTIONS_OPT '}'"""
+    """BLOCK : '{' INSTRUCTIONS_OPT '}' """
     p[0] = Block(p[2])
     p[0].lineno = p.lineno(0)
 
@@ -82,8 +82,11 @@ class Parser:
     """EXPRESSION : NUMBER
                   | ARRAY
                   | VARIABLE
-                  | STRING"""
-    p[0] = p[1]
+                  | STRING """
+    if isinstance(p[1], str):
+      p[0] = String(p[1])
+    else:
+      p[0] = p[1]
 
   def p_unary_minus(self, p):
     """EXPRESSION : SUB NUMBER   %prec UMINUS
@@ -148,12 +151,13 @@ class Parser:
 
   # Arrays
   def p_array(self, p):
-    """ARRAY : '[' INNER_ARRAY ']'"""
+    """ARRAY : '[' INNER_ARRAY ']'
+             | '[' ']' """
     p[0] = p[2]
 
   def p_inner_array(self, p):
     """INNER_ARRAY : EXPRESSION ',' INNER_ARRAY
-                   | EXPRESSION"""
+                   | EXPRESSION """
     if len(p)==2:
       p[0] = InnerList(p[1])
     else:
@@ -163,7 +167,7 @@ class Parser:
 
   def p_range_list_indices(self, p):
     """LIST_INDICES : RANGE ',' LIST_INDICES
-                    | RANGE"""
+                    | RANGE """
     if len(p)==2:
       p[0] = InnerList(p[1])
     else:
@@ -173,7 +177,7 @@ class Parser:
 
   def p_expression_list_indices(self, p):
     """LIST_INDICES : EXPRESSION ',' LIST_INDICES
-                    | EXPRESSION"""
+                    | EXPRESSION """
     if len(p)==2:
       p[0] = InnerList(p[1])
     else:
@@ -187,12 +191,12 @@ class Parser:
     p[0].lineno = p.lineno(0)
 
   def p_array_variable(self, p):
-    """VARIABLE : ID '[' LIST_INDICES ']'"""
+    """VARIABLE : ID '[' LIST_INDICES ']' """
     p[0] = ArrayElement(Identifier(p[1]), p[3])
     p[0].lineno = p.lineno(0)
 
   def p_string_variable(self, p):
-    """VARIABLE : STRING '[' LIST_INDICES ']'"""
+    """VARIABLE : STRING '[' LIST_INDICES ']' """
     p[0] = ArrayElement(p[1], p[3])
     p[0].lineno = p.lineno(0)
 
@@ -222,7 +226,7 @@ class Parser:
 
   def p_if_else_instruction(self, p):
     """IF_INSTRUCTION : IF '(' BOOLEAN_EXPRESSION ')' INSTRUCTION %prec IFX
-                      | IF '(' BOOLEAN_EXPRESSION ')' INSTRUCTION ELSE INSTRUCTION"""
+                      | IF '(' BOOLEAN_EXPRESSION ')' INSTRUCTION ELSE INSTRUCTION """
     if len(p) == 6:
       p[0] = If(p[3], p[5], None)
     else:
@@ -230,33 +234,33 @@ class Parser:
     p[0].lineno = p.lineno(0)
 
   def p_while_instruction(self, p):
-    """WHILE_INSTRUCTION : WHILE '(' BOOLEAN_EXPRESSION ')' INSTRUCTION"""
+    """WHILE_INSTRUCTION : WHILE '(' BOOLEAN_EXPRESSION ')' INSTRUCTION """
     p[0] = While(p[3], p[5])
     p[0].lineno = p.lineno(0)
 
   def p_range(self, p):
-    """RANGE : EXPRESSION ':' EXPRESSION"""
+    """RANGE : EXPRESSION ':' EXPRESSION """
     p[0] = Range(p[1], p[3])
     p[0].lineno = p.lineno(0)
 
   def p_for_instruction(self, p):
-    """FOR_INSTRUCTION : FOR ID ASSIGN RANGE INSTRUCTION"""
+    """FOR_INSTRUCTION : FOR ID ASSIGN RANGE INSTRUCTION """
     p[0] = For(p[2], p[4], p[5])
     p[0].lineno = p.lineno(0)
 
   def p_break_instruction(self, p):
-    """BREAK_INSTRUCTION : BREAK"""
+    """BREAK_INSTRUCTION : BREAK """
     p[0] = Break()
     p[0].lineno = p.lineno(0)
 
   def p_continue_instruction(self, p):
-    """CONTINUE_INSTRUCTION : CONTINUE"""
+    """CONTINUE_INSTRUCTION : CONTINUE """
     p[0] = Continue()
     p[0].lineno = p.lineno(0)
 
   def p_return_instruction(self, p):
     """RETURN_INSTRUCTION : RETURN
-                          | RETURN INNER_ARRAY"""
+                          | RETURN INNER_ARRAY """
     if len(p) == 3:
       p[0] = Return(p[2])
     else:
@@ -264,6 +268,6 @@ class Parser:
     p[0].lineno = p.lineno(0)
 
   def p_print_instruction(self, p):
-    """PRINT_INSTRUCTION : PRINT INNER_ARRAY"""
+    """PRINT_INSTRUCTION : PRINT INNER_ARRAY """
     p[0] = Print(p[2])
     p[0].lineno = p.lineno(0)
