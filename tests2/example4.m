@@ -12,4 +12,9 @@ s+="i psa";
 
 {}
 
+if (var) var = 2;
+if (0) var = 2;
+if ("") var = 5;
+if ([]) var = 3;
+
 0<2<3;
