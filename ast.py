@@ -104,24 +104,6 @@ class FloatNum(Number):
     self.type = 'FLOATNUM'
     self.value = float(value)
 
-class Arrays(Node):
-  def __init__(self, rows_list, last_row):
-    self.type = 'ARRAYS'
-    self.rows = []
-    if rows_list:
-      self.rows += rows_list
-    if last_row:
-      self.rows += [last_row]
-
-class Array(Node):
-  def __init__(self, exprs, last_expr):
-    self.type = 'ARRAY'
-    self.exprs = []
-    if exprs:
-      self.exprs.extend(exprs.exprs)
-    if last_expr:
-      self.exprs.append(last_expr)
-
 class BooleanExpression(Expression):
   def __init__(self, left, operator, right):
     self.type = 'BOOLEAN_EXPRESSION'
