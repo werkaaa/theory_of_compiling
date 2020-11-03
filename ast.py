@@ -11,22 +11,9 @@ class Instruction(Node):
   def __init__(self):
     super(Instruction, self).__init__()
 
-class Expression(Node):
+class Expression(Instruction):
   def __init__(self):
     super(Expression, self).__init__()
-
-class BinOp(Expression):
-  def __init__(self):
-    super(BinOp, self).__init__()
-
-class BinOpNum(BinOp):
-  def __init__(self, left, op, right):
-    super(BinOpNum, self).__init__()
-    self.type = 'bin_op_num'
-    self.left = left
-    self.right = right
-    self.op = op
-
 
 class If(Instruction):
   def __init__(self, condition, if_block, else_block):
@@ -74,7 +61,7 @@ class Print(Instruction):
 
 class Instructions(Node):
   def __init__(self, instructions, single_instruction):
-    self.type = 'instructions'
+    self.type = 'INSTRUCTIONS'
     self.instructions = []
     if instructions:
       self.instructions += [instructions]
@@ -83,15 +70,14 @@ class Instructions(Node):
 
 class NumberBinaryOperation(Expression):
   def __init__(self, left, operator, right):
-    super(NumberBinaryOperation, self).__init__('NumberBinaryOperation')
-    #self.type = 'NumberBinaryOperation'
+    self.type = 'NUMBER_BINARY_OPERATION'
     self.left = left
     self.operator = operator
     self.right = right
 
 class MatrixBinaryOperation(Expression):
   def __init__(self, left, operator, right):
-    super(MatrixBinaryOperation, self).__init__('MatrixBinaryOperation')
+    self.type = 'MATRIX_BINARY_OPERATION'
     self.left = left
     self.operator = operator
     self.right = right
@@ -110,17 +96,17 @@ class Number(Expression):
 
 class IntNum(Number):
   def __init__(self, value):
-    super(IntNum, self).__init__('IntNum')
+    self.type = 'INTNUM'
     self.value = int(value)
 
 class FloatNum(Number):
   def __init__(self, value):
-    super(FloatNum, self).__init__('FloatNum')
+    self.type = 'FLOATNUM'
     self.value = float(value)
 
 class Arrays(Node):
   def __init__(self, rows_list, last_row):
-    super(Arrays, self).__init__('Arrays')
+    self.type = 'ARRAYS'
     self.rows = []
     if rows_list:
       self.rows += rows_list
@@ -129,7 +115,7 @@ class Arrays(Node):
 
 class Array(Node):
   def __init__(self, exprs, last_expr):
-    super(Array, self).__init__('Array')
+    self.type = 'ARRAY'
     self.exprs = []
     if exprs:
       self.exprs.extend(exprs.exprs)
@@ -138,38 +124,58 @@ class Array(Node):
 
 class BooleanExpression(Expression):
   def __init__(self, left, operator, right):
-    super(BooleanExpression, self).__init__('BooleanExpression')
+    self.type = 'BOOLEAN_EXPRESSION'
     self.left = left
     self.operator = operator
     self.right = right
 
 class Transpose(Expression):
   def __init__(self, value):
-    super(Transpose, self).__init__('Transpose')
+    self.type = 'TRANSPOSE'
     self.value = value
 
 class Assignment(Expression):
   def __init__(self, left, operator, right):
-    super(Assignment, self).__init__('Assignment')
+    self.type = 'ASSIGNMENT'
     self.left = left
     self.operator = operator
     self.right = right
 
 class String(Node):
   def __init__(self, value):
-    super(String, self).__init__('String')
+    self.type = 'STRING'
     self.value = value
 
 class UnaryMinus(Expression):
   def __init__(self, value):
-    super(UnaryMinus, self).__init__('UnaryMinus')
+    self.type = 'UNARY_MINUS'
     self.value = value
 
 class MatrixFunction(Expression):
   def __init__(self, function, parameter1, parameter2):
-    super(MatrixFunction, self).__init__('MatrixFunction')
+    self.type = 'MATRIX_FUNCTION'
     self.function = function
     self.parameter1 = parameter1
     self.parameter2 = parameter2
 
+class Block(Instruction):
+  def __init__(self, instructions):
+    self.type = 'INSTRUCTIONS_BLOCK'
+    self.instructions = instructions
+
+class ArrayElement(Instruction):
+  def __init__(self, array, ids):
+    self.type = 'ARRAY_ELEMENT'
+    self.array = array
+    self.ids = ids
+
+
+class InnerList(Node):
+  def __init__(self, new_element, elements=None):
+    self.type = 'list'
+    self.elements = []
+    if elements:
+      self.elements = elements.elements
+
+    self.elements.append(new_element)
 
