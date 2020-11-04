@@ -9,13 +9,13 @@ class Parser:
   tokens = scanner.Scanner().tokens
 
   precedence = (
-    ("nonassoc", ':'),
-    ("nonassoc", 'IFX'),
+    ("nonassoc", ':'),  ###
+    ("nonassoc", 'ifx'),
     ("nonassoc", 'ELSE'),
-    ("nonassoc", 'GREATER', 'GREATEREQ', 'SMALLER', 'SMALLEREQ', 'EQ', 'NOTEQ'),
     ("nonassoc", 'ADDASSIGN', 'SUBASSIGN', 'MULASSIGN', 'DIVASSIGN'),
     ("right", 'ASSIGN'),
-    ("right", 'ID', 'STRING', '['),
+    ("nonassoc", 'GREATER', 'GREATEREQ', 'SMALLER', 'SMALLEREQ', 'EQ', 'NOTEQ'),
+    ("right", 'ID', 'STRING', '['), #### przemyslec
     ("left", 'ADD', 'SUB'),
     ("left", 'MUL', 'DIV'),
     ("left", 'DOTADD', 'DOTSUB'),
@@ -24,7 +24,7 @@ class Parser:
     ("left", 'TRANSPOSE'),
   )
 
-  start = 'PROGRAM'
+  start = 'program'
 
   # Builds the parser
   def __init__(self, lexer):
@@ -38,26 +38,26 @@ class Parser:
       print("Unexpected end of input")
 
   def p_program(self, p):
-    """PROGRAM : INSTRUCTIONS_OPT """
+    """program : instructions_opt """
     p[0] = p[1]
 
   def p_empty(self, p):
-    """EMPTY : """
+    """empty : """
     pass
 
   def p_instructions_opt(self, p):
-    """INSTRUCTIONS_OPT : INSTRUCTIONS
-                        | EMPTY """
+    """instructions_opt : instructions
+                        | empty """
     p[0] = p[1]
 
   def p_block_of_instructions(self, p):
-    """BLOCK : '{' INSTRUCTIONS_OPT '}' """
+    """block : '{' instructions_opt '}' """
     p[0] = Block(p[2])
     p[0].lineno = p.lineno(0)
 
   def p_instructions(self, p):
-    """INSTRUCTIONS : INSTRUCTIONS INSTRUCTION
-                    | INSTRUCTION """
+    """instructions : instructions instruction
+                    | instruction """
     if len(p) == 2:
       p[0] = Instructions(None, p[1])
     else:
@@ -65,23 +65,23 @@ class Parser:
     p[0].lineno = p.lineno(0)
 
   def p_instruction(self, p):
-    """INSTRUCTION : EXPRESSION ';'
-                   | ASSIGNMENT ';'
-                   | IF_INSTRUCTION
-                   | WHILE_INSTRUCTION
-                   | FOR_INSTRUCTION
-                   | BREAK_INSTRUCTION ';'
-                   | CONTINUE_INSTRUCTION ';'
-                   | RETURN_INSTRUCTION ';'
-                   | PRINT_INSTRUCTION ';'
-                   | BLOCK """
+    """instruction : expression ';'
+                   | assignment ';'
+                   | if_instruction
+                   | while_instruction
+                   | for_instruction
+                   | break_instruction ';'
+                   | continue_instruction ';'
+                   | return_instruction ';'
+                   | print_instruction ';'
+                   | block """
     p[0] = p[1]
 
   # Expressions
   def p_expression(self, p):
-    """EXPRESSION : NUMBER
-                  | ARRAY
-                  | VARIABLE
+    """expression : number
+                  | array
+                  | variable
                   | STRING """
     if isinstance(p[1], str):
       p[0] = String(p[1])
@@ -89,10 +89,7 @@ class Parser:
       p[0] = p[1]
 
   def p_unary_minus(self, p):
-    """EXPRESSION : SUB NUMBER   %prec UMINUS
-                  | SUB VARIABLE %prec UMINUS
-                  | SUB ARRAY   %prec UMINUS
-                  | SUB '(' EXPRESSION ')' %prec UMINUS """
+    """expression : SUB expression %prec UMINUS """
     if len(p) == 3:
       p[0] = UnaryMinus(p[2])
     else:
@@ -100,74 +97,71 @@ class Parser:
     p[0].lineno = p.lineno(0)
 
   def p_binary_operations(self, p):
-    """EXPRESSION : EXPRESSION ADD EXPRESSION
-                  | EXPRESSION SUB EXPRESSION
-                  | EXPRESSION MUL EXPRESSION
-                  | EXPRESSION DIV EXPRESSION """
+    """expression : expression ADD expression
+                  | expression SUB expression
+                  | expression MUL expression
+                  | expression DIV expression """
     p[0] = NumberBinaryOperation(p[1], p[2], p[3])
     p[0].lineno = p.lineno(0)
 
   def p_binary_operations_dot(self, p):
-    """EXPRESSION : EXPRESSION DOTADD EXPRESSION
-                  | EXPRESSION DOTSUB EXPRESSION
-                  | EXPRESSION DOTMUL EXPRESSION
-                  | EXPRESSION DOTDIV EXPRESSION """
+    """expression : expression DOTADD expression
+                  | expression DOTSUB expression
+                  | expression DOTMUL expression
+                  | expression DOTDIV expression """
     p[0] = MatrixBinaryOperation(p[1], p[2], p[3])
     p[0].lineno = p.lineno(0)
 
   def p_expression_par(self, p):
-    """EXPRESSION : '(' EXPRESSION ')' """
+    """expression : '(' expression ')' """
     p[0] = p[2]
     p[0].lineno = p.lineno(0)
 
   def p_transpose(self, p):
-    """EXPRESSION : EXPRESSION TRANSPOSE """
+    """expression : expression TRANSPOSE """
     p[0] = Transpose(p[1])
     p[0].lineno = p.lineno(0)
 
-  def p_matrix_functions(self, p):
-    """EXPRESSION : EYE '(' EXPRESSION ')'
-                  | ZEROS '(' EXPRESSION ')'
-                  | ONES '(' EXPRESSION ')'
-                  | ZEROS '(' EXPRESSION ',' EXPRESSION ')'
-                  | ONES '(' EXPRESSION ',' EXPRESSION ')' """
-
-    if len(p) == 7:
-      p[0] = MatrixFunction(p[1], p[3], p[5])
-    else:
-      p[0] = MatrixFunction(p[1], p[3], None)
+  def p_matrix_func_call(self, p):
+    """expression : matrix_func '(' inner_array ')' """
+    p[0] = MatrixFunction(p[1], p[3])
     p[0].lineno = p.lineno(0)
+
+  def p_matrix_functions(self, p):
+    """matrix_func : EYE
+                   | ZEROS
+                   | ONES """
+    p[0] = p[1]
 
   # Numbers
   def p_int(self, p):
-    """NUMBER : INTNUM """
+    """number : INTNUM """
     p[0] = IntNum(p[1])
     p[0].lineno = p.lineno(0)
 
   def p_float(self, p):
-    """NUMBER : FLOATNUM """
+    """number : FLOATNUM """
     p[0] = FloatNum(p[1])
     p[0].lineno = p.lineno(0)
 
   # Arrays
   def p_array(self, p):
-    """ARRAY : '[' INNER_ARRAY ']'
+    """array : '[' inner_array ']'
              | '[' ']' """
     p[0] = p[2]
 
   def p_inner_array(self, p):
-    """INNER_ARRAY : EXPRESSION ',' INNER_ARRAY
-                   | EXPRESSION """
+    """inner_array : expression ',' inner_array
+                   | expression """
     if len(p)==2:
       p[0] = InnerList(p[1])
     else:
       p[0] = InnerList(p[1], p[3])
-
     p[0].lineno = p.lineno(0)
 
   def p_range_list_indices(self, p):
-    """LIST_INDICES : RANGE ',' LIST_INDICES
-                    | RANGE """
+    """list_indices : range ',' list_indices
+                    | range """
     if len(p)==2:
       p[0] = InnerList(p[1])
     else:
@@ -176,8 +170,8 @@ class Parser:
     p[0].lineno = p.lineno(0)
 
   def p_expression_list_indices(self, p):
-    """LIST_INDICES : EXPRESSION ',' LIST_INDICES
-                    | EXPRESSION """
+    """list_indices : expression ',' list_indices
+                    | expression """
     if len(p)==2:
       p[0] = InnerList(p[1])
     else:
@@ -186,28 +180,28 @@ class Parser:
     p[0].lineno = p.lineno(0)
 
   def p_variable(self, p):
-    """VARIABLE : ID """
+    """variable : ID """
     p[0] = Identifier(p[1])
     p[0].lineno = p.lineno(0)
 
   def p_array_variable(self, p):
-    """VARIABLE : ID '[' LIST_INDICES ']' """
+    """variable : ID '[' list_indices ']' """
     p[0] = ArrayElement(Identifier(p[1]), p[3])
     p[0].lineno = p.lineno(0)
 
   def p_string_variable(self, p):
-    """VARIABLE : STRING '[' LIST_INDICES ']' """
+    """variable : STRING '[' list_indices ']' """
     p[0] = ArrayElement(p[1], p[3])
     p[0].lineno = p.lineno(0)
 
   def p_binary_relations(self, p):
-    """BOOLEAN_EXPRESSION : EXPRESSION SMALLER EXPRESSION
-                          | EXPRESSION GREATER EXPRESSION
-                          | EXPRESSION SMALLEREQ EXPRESSION
-                          | EXPRESSION GREATEREQ EXPRESSION
-                          | EXPRESSION NOTEQ EXPRESSION
-                          | EXPRESSION EQ EXPRESSION
-                          | EXPRESSION """
+    """boolean_expression : expression SMALLER expression
+                          | expression GREATER expression
+                          | expression SMALLEREQ expression
+                          | expression GREATEREQ expression
+                          | expression NOTEQ expression
+                          | expression EQ expression
+                          | expression """
     if len(p) == 2:
       p[0] = p[1]  # Expression as a relation value
     else:
@@ -215,18 +209,17 @@ class Parser:
     p[0].lineno = p.lineno(0)
 
   def p_assignment(self, p):
-    """ASSIGNMENT : VARIABLE ASSIGN EXPRESSION
-                  | VARIABLE ADDASSIGN EXPRESSION
-                  | VARIABLE SUBASSIGN EXPRESSION
-                  | VARIABLE MULASSIGN EXPRESSION
-                  | VARIABLE DIVASSIGN EXPRESSION """
+    """assignment : variable ASSIGN expression
+                  | variable ADDASSIGN expression
+                  | variable SUBASSIGN expression
+                  | variable MULASSIGN expression
+                  | variable DIVASSIGN expression """
     p[0] = Assignment(p[1], p[2], p[3])
     p[0].lineno = p.lineno(0)
 
-
   def p_if_else_instruction(self, p):
-    """IF_INSTRUCTION : IF '(' BOOLEAN_EXPRESSION ')' INSTRUCTION %prec IFX
-                      | IF '(' BOOLEAN_EXPRESSION ')' INSTRUCTION ELSE INSTRUCTION """
+    """if_instruction : IF '(' boolean_expression ')' instruction %prec ifx
+                      | IF '(' boolean_expression ')' instruction ELSE instruction """
     if len(p) == 6:
       p[0] = If(p[3], p[5], None)
     else:
@@ -234,33 +227,33 @@ class Parser:
     p[0].lineno = p.lineno(0)
 
   def p_while_instruction(self, p):
-    """WHILE_INSTRUCTION : WHILE '(' BOOLEAN_EXPRESSION ')' INSTRUCTION """
+    """while_instruction : WHILE '(' boolean_expression ')' instruction """
     p[0] = While(p[3], p[5])
     p[0].lineno = p.lineno(0)
 
   def p_range(self, p):
-    """RANGE : EXPRESSION ':' EXPRESSION """
+    """range : expression ':' expression """
     p[0] = Range(p[1], p[3])
     p[0].lineno = p.lineno(0)
 
   def p_for_instruction(self, p):
-    """FOR_INSTRUCTION : FOR ID ASSIGN RANGE INSTRUCTION """
+    """for_instruction : FOR ID ASSIGN range instruction """
     p[0] = For(p[2], p[4], p[5])
     p[0].lineno = p.lineno(0)
 
   def p_break_instruction(self, p):
-    """BREAK_INSTRUCTION : BREAK """
+    """break_instruction : BREAK """
     p[0] = Break()
     p[0].lineno = p.lineno(0)
 
   def p_continue_instruction(self, p):
-    """CONTINUE_INSTRUCTION : CONTINUE """
+    """continue_instruction : CONTINUE """
     p[0] = Continue()
     p[0].lineno = p.lineno(0)
 
   def p_return_instruction(self, p):
-    """RETURN_INSTRUCTION : RETURN
-                          | RETURN INNER_ARRAY """
+    """return_instruction : RETURN
+                          | RETURN inner_array """
     if len(p) == 3:
       p[0] = Return(p[2])
     else:
@@ -268,6 +261,6 @@ class Parser:
     p[0].lineno = p.lineno(0)
 
   def p_print_instruction(self, p):
-    """PRINT_INSTRUCTION : PRINT INNER_ARRAY """
+    """print_instruction : PRINT inner_array """
     p[0] = Print(p[2])
     p[0].lineno = p.lineno(0)

@@ -134,11 +134,10 @@ class UnaryMinus(Expression):
     self.value = value
 
 class MatrixFunction(Expression):
-  def __init__(self, function, parameter1, parameter2):
+  def __init__(self, function, parameters):
     self.type = 'MATRIX_FUNCTION'
     self.function = function
-    self.parameter1 = parameter1
-    self.parameter2 = parameter2
+    self.parameters = parameters
 
 class Block(Instruction):
   def __init__(self, instructions):
