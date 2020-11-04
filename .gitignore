@@ -1,2 +1,6 @@
 # Bytecode
 __pycache__
+
+# Parser generator output files
+parser.out
+parsetab.py
