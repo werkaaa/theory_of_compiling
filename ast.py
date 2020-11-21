@@ -1,19 +1,38 @@
 class Node:
-  def __init__(self, type, children=None, leaf=None):
-    self.type = type
-    if children:
-      self.children = children
-    else:
-      self.children = []
-    self.leaf = leaf
+  def __init__(self):
+    self.type = 'Node'
 
 class Instruction(Node):
-  def __init__(self):
-    super(Instruction, self).__init__()
+  pass
 
-class Expression(Instruction):
-  def __init__(self):
-    super(Expression, self).__init__()
+class Expression(Node):
+  pass
+
+# Instructions
+class Block(Instruction):
+  def __init__(self, instructions):
+    self.type = 'INSTRUCTIONS_BLOCK'
+    self.instructions = instructions
+
+class Assignment(Instruction):
+  def __init__(self, left, operator, right):
+    self.type = 'ASSIGN'
+    self.left = left
+    self.operator = operator
+    self.right = right
+
+class For(Instruction):
+  def __init__(self, variable, range, instruction):
+    self.type = 'FOR'
+    self.variable = variable
+    self.range = range
+    self.instruction = instruction
+
+class While(Instruction):
+  def __init__(self, condition, instruction):
+    self.type = 'WHILE'
+    self.condition = condition
+    self.instruction = instruction
 
 class If(Instruction):
   def __init__(self, condition, if_block, else_block):
@@ -21,25 +40,6 @@ class If(Instruction):
     self.condition = condition
     self.if_block = if_block
     self.else_block = else_block
-
-class While(Instruction):
-  def __init__(self, condition, block):
-    self.type = 'WHILE'
-    self.condition = condition
-    self.block = block
-
-class For(Instruction):
-  def __init__(self, variable, range, block):
-    self.type = 'FOR'
-    self.variable = variable
-    self.range = range
-    self.block = block
-
-class Range(Node):
-  def __init__(self, start_value, end_value):
-    self.type = 'RANGE'
-    self.start_value = start_value
-    self.end_value = end_value
 
 class Break(Instruction):
   def __init__(self):
@@ -50,108 +50,96 @@ class Continue(Instruction):
     self.type = 'CONTINUE'
 
 class Return(Instruction):
-  def __init__(self, arg=None):
+  def __init__(self, args=None):
     self.type = 'RETURN'
-    self.arg = arg
+    self.args = args
 
 class Print(Instruction):
-  def __init__(self, arg=None):
+  def __init__(self, args=None):
     self.type = 'PRINT'
-    self.arg = arg
+    self.args = args
 
-class Instructions(Node):
-  def __init__(self, instructions, single_instruction):
-    self.type = 'INSTRUCTIONS'
-    self.instructions = []
-    if instructions:
-      self.instructions += [instructions]
-    if single_instruction:
-      self.instructions += [single_instruction]
+class ArrayElement(Instruction):
+  def __init__(self, array, ids):
+    self.type = 'array_element'
+    self.array = array
+    self.ids = ids
 
-class NumberBinaryOperation(Expression):
-  def __init__(self, left, operator, right):
-    self.type = 'NUMBER_BINARY_OPERATION'
-    self.left = left
-    self.operator = operator
-    self.right = right
-
-class MatrixBinaryOperation(Expression):
-  def __init__(self, left, operator, right):
-    self.type = 'MATRIX_BINARY_OPERATION'
-    self.left = left
-    self.operator = operator
-    self.right = right
-
-class Variable(Expression):
+# Expressions
+class Value(Expression):
   pass
 
-class Identifier(Variable):
-  def __init__(self, name):
-    self.type = 'ID'
-    self.name = name
-
-class Number(Expression):
-  def __init__(self, type):
-    super(Number, self).__init__(type)
-
-class IntNum(Number):
+class IntNum(Value):
   def __init__(self, value):
     self.type = 'INTNUM'
     self.value = int(value)
 
-class FloatNum(Number):
+class FloatNum(Value):
   def __init__(self, value):
     self.type = 'FLOATNUM'
     self.value = float(value)
 
-class BooleanExpression(Expression):
+class String(Value):
+  def __init__(self, value):
+    self.type = 'STRING'
+    self.value = '"' + value + '"'
+
+class Array(Expression):
+  def __init__(self, list=None):
+    self.type = 'array'
+    self.list = list
+
+class BinaryExpression(Expression):
   def __init__(self, left, operator, right):
-    self.type = 'BOOLEAN_EXPRESSION'
+    self.type = 'binary_expression'
     self.left = left
     self.operator = operator
     self.right = right
+
+class NumberBinaryOperation(BinaryExpression):
+  def __init__(self, left, operator, right):
+    super(NumberBinaryOperation, self).__init__(left, operator, right)
+    self.type = 'number_binary_operation'
+
+class MatrixBinaryOperation(BinaryExpression):
+  def __init__(self, left, operator, right):
+    super(MatrixBinaryOperation, self).__init__(left, operator, right)
+    self.type = 'matrix_binary_operation'
+
+class BooleanExpression(BinaryExpression):
+  def __init__(self, left, operator, right):
+    super(BooleanExpression, self).__init__(left, operator, right)
+    self.type = 'boolean_expression'
+
+class MatrixFunction(Expression):
+  def __init__(self, function, parameter):
+    self.type = 'matrix_function'
+    self.function = function
+    self.parameter = parameter
+
+class UnaryMinus(Expression):
+  def __init__(self, value):
+    self.type = 'unary_minus'
+    self.value = value
 
 class Transpose(Expression):
   def __init__(self, value):
     self.type = 'TRANSPOSE'
     self.value = value
 
-class Assignment(Expression):
-  def __init__(self, left, operator, right):
-    self.type = 'ASSIGNMENT'
-    self.left = left
-    self.operator = operator
-    self.right = right
+# Other
+class Identifier(Node):
+  def __init__(self, name):
+    self.type = 'ID'
+    self.name = name
 
-class String(Node):
-  def __init__(self, value):
-    self.type = 'STRING'
-    self.value = value
+class Range(Node):
+  def __init__(self, start_value, end_value):
+    self.type = 'range'
+    self.start_value = start_value
+    self.end_value = end_value
 
-class UnaryMinus(Expression):
-  def __init__(self, value):
-    self.type = 'UNARY_MINUS'
-    self.value = value
-
-class MatrixFunction(Expression):
-  def __init__(self, function, parameters):
-    self.type = 'MATRIX_FUNCTION'
-    self.function = function
-    self.parameters = parameters
-
-class Block(Instruction):
-  def __init__(self, instructions):
-    self.type = 'INSTRUCTIONS_BLOCK'
-    self.instructions = instructions
-
-class ArrayElement(Instruction):
-  def __init__(self, array, ids):
-    self.type = 'ARRAY_ELEMENT'
-    self.array = array
-    self.ids = ids
-
-
-class InnerList(Node):
+class List(Node):
   def __init__(self, new_element, elements=None):
     self.type = 'list'
     self.elements = []
@@ -160,3 +148,17 @@ class InnerList(Node):
 
     self.elements.append(new_element)
 
+class InnerList(List):
+  def __init__(self, new_element, elements=None):
+    super(InnerList, self).__init__(new_element, elements)
+    self.type = 'inner_list'
+
+class ListOfIndices(List):
+  def __init__(self, new_element, elements=None):
+    super(ListOfIndices, self).__init__(new_element, elements)
+    self.type = 'list_of_indices'
+
+class Instructions(List):
+  def __init__(self, new_element, elements=None):
+    super(Instructions, self).__init__(new_element, elements)
+    self.type = 'instructions'
