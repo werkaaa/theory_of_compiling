@@ -59,7 +59,7 @@ class Print(Instruction):
     self.type = 'PRINT'
     self.args = args
 
-class ArrayElement(Instruction):
+class ArrayElement(Expression):
   def __init__(self, array, ids):
     self.type = 'array_element'
     self.array = array
