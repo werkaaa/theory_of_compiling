@@ -7,7 +7,7 @@ class Parser:
   tokens = scanner.Scanner().tokens
 
   precedence = (
-      ("nonassoc", 'ifx'),
+      ("nonassoc", 'IFX'),
       ("nonassoc", 'ELSE'),
       ("nonassoc", 'ADDASSIGN', 'SUBASSIGN', 'MULASSIGN', 'DIVASSIGN'),
       ("right", 'ASSIGN'),
@@ -216,7 +216,7 @@ class Parser:
     p[0].lineno = p.lineno(0)
 
   def p_if_else_instruction(self, p):
-    """if_instruction : IF '(' expression ')' instruction %prec ifx
+    """if_instruction : IF '(' expression ')' instruction %prec IFX
                       | IF '(' expression ')' instruction ELSE instruction """
     if len(p) == 6:
       p[0] = If(p[3], p[5], None)
