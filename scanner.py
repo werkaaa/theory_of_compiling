@@ -25,7 +25,7 @@ class Scanner:
 
   # Tokens declaration
   tokens = [
-       'ADD',
+      'ADD',
       'SUB',
       'MUL',
       'DIV',
