@@ -35,7 +35,7 @@ class Parser:
 
   def p_program(self, p):
     """program : instructions_opt """
-    p[0] = p[1]
+    p[0] = Program(p[1])
 
   def p_empty(self, p):
     """empty : """
@@ -52,12 +52,12 @@ class Parser:
     p[0].lineno = p.lineno(0)
 
   def p_instructions(self, p):
-    """instructions : instruction instructions
+    """instructions : instructions instruction
                     | instruction """
     if len(p) == 2:
       p[0] = Instructions(p[1])
     else:
-      p[0] = Instructions(p[1], p[2])
+      p[0] = Instructions(p[2], p[1])
     p[0].lineno = p.lineno(0)
 
   def p_instruction(self, p):
@@ -162,12 +162,12 @@ class Parser:
     p[0].lineno = p.lineno(0)
 
   def p_inner_array(self, p):
-    """inner_array : expression ',' inner_array
+    """inner_array : inner_array ',' expression
                    | expression """
     if len(p) == 2:
       p[0] = InnerList(p[1])
     else:
-      p[0] = InnerList(p[1], p[3])
+      p[0] = InnerList(p[3], p[1])
     p[0].lineno = p.lineno(0)
 
   def p_range(self, p):
@@ -182,12 +182,21 @@ class Parser:
     p[0].lineno = p.lineno(0)
 
   def p_list_of_indices(self, p):
-    """list_indices : indices_part ',' list_indices
+    """list_indices : list_indices ',' indices_part
                     | indices_part """
     if len(p) == 2:
       p[0] = ListOfIndices(p[1])
     else:
-      p[0] = ListOfIndices(p[1], p[3])
+      p[0] = ListOfIndices(p[3], p[1])
+    p[0].lineno = p.lineno(0)
+
+  def p_list_of_arguments(self, p):
+    """list_arguments : list_arguments ',' expression
+                      | expression """
+    if len(p) == 2:
+      p[0] = ListOfArguments(p[1])
+    else:
+      p[0] = ListOfArguments(p[3], p[1])
     p[0].lineno = p.lineno(0)
 
   def p_variable(self, p):
@@ -219,7 +228,7 @@ class Parser:
     """if_instruction : IF '(' expression ')' instruction %prec IFX
                       | IF '(' expression ')' instruction ELSE instruction """
     if len(p) == 6:
-      p[0] = If(p[3], p[5], None)
+      p[0] = If(p[3], p[5])
     else:
       p[0] = If(p[3], p[5], p[7])
     p[0].lineno = p.lineno(0)
@@ -246,7 +255,7 @@ class Parser:
 
   def p_return_instruction(self, p):
     """return_instruction : RETURN
-                          | RETURN inner_array """
+                          | RETURN list_arguments """
     if len(p) == 3:
       p[0] = Return(p[2])
     else:
@@ -254,6 +263,6 @@ class Parser:
     p[0].lineno = p.lineno(0)
 
   def p_print_instruction(self, p):
-    """print_instruction : PRINT inner_array """
+    """print_instruction : PRINT list_arguments """
     p[0] = Print(p[2])
     p[0].lineno = p.lineno(0)

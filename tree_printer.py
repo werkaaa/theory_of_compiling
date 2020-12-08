@@ -112,6 +112,11 @@ class TreePrinter:
     self.value.printTree(indent+1)
 
   # Other
+  @addToClass(Program)
+  def printTree(self, indent=0):
+    print_intended(self.type, indent)
+    self.instructions_opt.printTree(indent+1)
+
   @addToClass(Identifier)
   def printTree(self, indent=0):
     print_intended(self.name, indent)
@@ -124,5 +129,5 @@ class TreePrinter:
 
   @addToClass(List)
   def printTree(self, indent=0):
-    for element in self.elements[::-1]:
+    for element in self.elements:
       element.printTree(indent)

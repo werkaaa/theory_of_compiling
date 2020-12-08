@@ -35,7 +35,7 @@ class While(Instruction):
     self.instruction = instruction
 
 class If(Instruction):
-  def __init__(self, condition, if_block, else_block):
+  def __init__(self, condition, if_block, else_block=None):
     self.type = 'IF'
     self.condition = condition
     self.if_block = if_block
@@ -128,6 +128,11 @@ class Transpose(Expression):
     self.value = value
 
 # Other
+class Program(Node):
+  def __init__(self, instructions_opt):
+    self.type = 'program'
+    self.instructions_opt = instructions_opt
+
 class Identifier(Node):
   def __init__(self, name):
     self.type = 'ID'
@@ -157,6 +162,11 @@ class ListOfIndices(List):
   def __init__(self, new_element, elements=None):
     super(ListOfIndices, self).__init__(new_element, elements)
     self.type = 'list_of_indices'
+
+class ListOfArguments(List):
+  def __init__(self, new_element, elements=None):
+    super(ListOfArguments, self).__init__(new_element, elements)
+    self.type = 'list_of_arguments'
 
 class Instructions(List):
   def __init__(self, new_element, elements=None):
