@@ -94,7 +94,7 @@ class TypeChecker(NodeVisitor):
       type_variable = self.symbol_table.get(node.left.name).type
       if type_right == 'unknown' or type_left == 'unknown':
         pass
-      elif type_variable == 'array': 
+      elif type_variable == 'array' or (type_variable == 'STRING' and node.operator != '+='): 
         print((f'ERROR in line {node.lineno}\n'
                f"Operation '{node.operator}' unavailable for type {type_variable}\n"))
       elif type_right != type_variable:
@@ -202,7 +202,7 @@ class TypeChecker(NodeVisitor):
                  f'Row index out of range\n'))
         new_row_num = row_idx.end_value.value - row_idx.start_value.value + 1
       elif row_idx.type == 'INTNUM':
-        if num_rows != 'unknown' and row_idx.value >= num_rows:
+        if num_rows != 'unknown' and row_idx.value > num_rows:
           print((f'ERROR in line {node.lineno}\n'
                  f'Row index out of range\n'))
       if col_idx.type == 'range':
@@ -211,7 +211,7 @@ class TypeChecker(NodeVisitor):
                  f'Column index out of range\n'))
         new_col_num = col_idx.end_value.value - col_idx.start_value.value + 1
       elif col_idx.type == 'INTNUM':
-        if num_cols != 'unknown' and col_idx.value >= num_cols:
+        if num_cols != 'unknown' and col_idx.value > num_cols:
           print((f'ERROR in line {node.lineno}\n'
                  f'Column index out of range\n'))
       if new_row_num < 0 or new_col_num < 0:
@@ -230,7 +230,7 @@ class TypeChecker(NodeVisitor):
                  f'Index out of range\n'))
         new_col_num = col_idx.end_value.value - col_idx.start_value.value + 1 
       elif col_idx.type == 'INTNUM':
-        if num_cols != 'unknown' and col_idx.value >= num_cols:
+        if num_cols != 'unknown' and col_idx.value > num_cols:
           print((f'ERROR in line {node.lineno}\n'
                  f'Column index out of range\n'))
       if new_col_num < 0:
