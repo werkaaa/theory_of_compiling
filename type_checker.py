@@ -105,26 +105,55 @@ class TypeChecker(NodeVisitor):
 
     elif type_right not in ['array_element', 'INTNUM', 'FLOATNUM', 'array', 'STRING',
                             'TRANSPOSE', 'unary_minus', 'matrix_binary_operation',
-                            'number_binary_operation', 'boolean_expression']:
+                            'number_binary_operation', 'boolean_expression', 'unknown']:
       print((f'ERROR in line {node.lineno}\n'
              f'{type_right} is not a valid type '
              'for the right side of assignmet\n'))
 
-    if type_left not in ['ID', 'array_element']:
+    if left.type not in ['ID', 'array_element']:
       print((f'ERROR in line {node.lineno}\n'
-             f'Cannot assign to {type_left}\n'))
+             f'Cannot assign to {left.type}\n'))
 
-    # TODO: assignment to array slicing and array indices jeśli do
-    #  slicingu to wymiary muszą się zgadzać
-
-
+    # Array slicing correctness check.
+    if left.type == 'array_element':
+      if type_left == 'array':
+        if type_right not in ['unknown', 'array', 'array_element',
+                     'matrix_binary_operation', 'matrix_function']:
+          print((f'ERROR in line {node.lineno}\n'
+                 f'Assigning wrong type to a subarray\n'))
+          return node.type
+      elif type_left == 'STRING' and type_right != 'STRING':
+        print((f'ERROR in line {node.lineno}\n'
+               f'Assigning wrong type to a substring\n'))
+        return node.type
+      elif type_left != type_right:
+        print((f'ERROR in line {node.lineno}\n'
+               f'Assigning subarray to the single array element\n'))
+        return node.type
+   
+    # Operation and assingment correctness check.
     if (node.operator != '=' and
         type_left == 'ID' and
         self.variable_declared(node.left)):
-      #TODO: sprawdzać typy przy -=, +=, ...
-      pass
-
-    self.symbol_table.put(node.left.name, node.right)
+      type_variable = self.symbol_table.get(node.left.name).type
+      print(f'ltyp  {left.type}')
+      print(f'rtyp  {right.type}')
+      print(f'typl  {type_left}')
+      print(f'typr  {type_right}')
+      print(f'val   {type_variable}')
+      if type_right == 'unknown' or type_left == 'unknown':
+        pass
+      elif type_variable == 'array': 
+        print((f'ERROR in line {node.lineno}\n'
+               f"Operation '{node.operator}' unavailable for type {type_variable}\n"))
+      elif type_right != type_variable:
+        print((f'ERROR in line {node.lineno}\n'
+               f"Type mismatch in '{node.operator}' assignment\n"))
+        return node.type
+  
+    # Add symbol to symbol table.
+    if left.type != 'array_element':
+      self.symbol_table.put(node.left.name, node.right)
 
     return node.type
 
@@ -180,8 +209,97 @@ class TypeChecker(NodeVisitor):
     return node.type
 
   def visit_ArrayElement(self, node):
-    self.variable_declared(node.array)
+    self.visit(node.array)
     self.visit(node.ids)
+
+    num_rows, num_cols = 1, 1
+    if node.array.type == 'STRING':
+      return 'STRING'
+    else:
+      self.variable_declared(node.array)
+      array = self.symbol_table.get(node.array.name)
+      type_array = self.visit(node.array)
+      print(f'atype {array.type}')
+      print(f'typea {type_array}')
+      if array.type == 'STRING':
+        return 'STRING'
+      elif array.type == 'array':
+        num_rows = array.num_rows
+        num_cols = array.num_cols
+      elif array.type in ['matrix_function', 'matrix_binary_operation']:
+        pass
+      elif array.type == 'unknown':
+        return node.type
+      else:
+        print((f'ERROR in line {node.lineno}\n'
+               f'Subscripted value is neither array nor string\n'))
+        return node.type
+
+    array = self.symbol_table.get(node.array.name)
+
+    indices_num = len(node.ids.elements)
+    print(f'liczba indeksów: {indices_num}')
+    if indices_num > 2:
+      print((f'ERROR in line {node.lineno}\n'
+             f'Indices inconsistent with dimensions \n'))
+      return node.type
+    elif len(node.ids.elements) == 2:
+      row_idx = node.ids.elements[0]
+      col_idx = node.ids.elements[1]
+      new_row_num = 1
+      new_col_num = 1
+      if row_idx.type == 'range':
+        if num_rows != 'unknown' and row_idx.end_value.value > num_rows:
+          print((f'ERROR in line {node.lineno}\n'
+                 f'Row index out of range\n'))
+        new_row_num = row_idx.end_value.value - row_idx.start_value.value + 1
+      elif row_idx.type == 'INTNUM':
+        if num_rows != 'unknown' and row_idx.value >= num_rows:
+          print((f'ERROR in line {node.lineno}\n'
+                 f'Row index out of range\n'))
+      if col_idx.type == 'range':
+        if num_cols != 'unknown' and col_idx.end_value.value > num_cols:
+          print((f'ERROR in line {node.lineno}\n'
+                 f'Column index out of range\n'))
+        new_col_num = col_idx.end_value.value - col_idx.start_value.value + 1
+      elif col_idx.type == 'INTNUM':
+        if num_cols != 'unknown' and col_idx.value >= num_cols:
+          print((f'ERROR in line {node.lineno}\n'
+                 f'Column index out of range\n'))
+      if new_row_num < 0 or new_col_num < 0:
+        print((f'ERROR in line {node.lineno}\n'
+               f'Wrong indexing\n'))
+      if new_row_num > 1 or new_col_num > 1:
+        node.num_rows = new_row_num
+        node.num_cols = new_col_num
+    else:
+      col_idx = node.ids.elements[0]
+      new_row_num = 1
+      new_col_num = 1
+      if col_idx.type == 'range':
+        if num_cols != 'unknown' and col_idx.end_value.value > num_cols:
+          print((f'ERROR in line {node.lineno}\n'
+                 f'Index out of range\n'))
+        new_col_num = col_idx.end_value.value - col_idx.start_value.value + 1 
+      elif col_idx.type == 'INTNUM':
+        if num_cols != 'unknown' and col_idx.value >= num_cols:
+          print((f'ERROR in line {node.lineno}\n'
+                 f'Column index out of range\n'))
+      if new_col_num < 0:
+        print((f'ERROR in line {node.lineno}\n'
+               f'Wrong indexing\n'))
+
+    if new_row_num == 1 and new_col_num == 1:
+      array = self.symbol_table.get(node.array.name)
+      if array is not None:
+        print('tedy')
+        return array.element_type
+    else:
+      node.num_rows = new_row_num
+      node.num_cols = new_col_num
+      node.element_type = array.element_type
+      return 'array'
+
     # TODO: slicing - trzeba uwzględnić
     #  trzeba z listIndex przekazać jakoś min i max zakres, żeby wiedzieć
     #  czy nie sięgamy poza rozmiar array, należałoby też sprawdzić czy to
@@ -201,9 +319,15 @@ class TypeChecker(NodeVisitor):
     return node.type
 
   def visit_Array(self, node):
-    self.visit(node.list)
-    node.num_rows = node.list.num_rows
-    node.num_cols = node.list.num_cols
+    if node.list is not None:
+      self.visit(node.list)
+      node.num_rows = node.list.num_rows
+      node.num_cols = node.list.num_cols
+      node.element_type = node.list.element_type
+    else:
+      node.num_rows = 'unknown'
+      node.num_cols = 'unknown'
+      node.element_type = 'unknown'
     return node.type
 
   def visit_NumberBinaryOperation(self, node):
@@ -281,6 +405,7 @@ class TypeChecker(NodeVisitor):
 
     type_left = self.visit(expr_left)
     type_right = self.visit(expr_right)
+    print(f'dodaję {type_left, type_right}')
     if type_left == 'ID':
       if not self.variable_declared(node.left):
         type_left = 'unknown'
@@ -301,11 +426,12 @@ class TypeChecker(NodeVisitor):
     if type_left == 'unknown' or type_right == 'unknown':
       node.num_rows = 'unknown'
       node.num_cols = 'unknown'
+      node.element_type = 'unknown'
       return node.type
 
     if (type_left in ['array', 'matrix_function', 'TRANSPOSE', 'matrix_binary_expression'] and
        type_right in ['array', 'matrix_function', 'TRANSPOSE', 'matrix_binary_expression']):
-
+      node.element_type = 'unknown'
       if expr_left.num_rows == 'unknown' or expr_right.num_rows == 'unknown':
         num_rows = 'unknown'
       else:
@@ -328,6 +454,7 @@ class TypeChecker(NodeVisitor):
       else:
         node.num_rows = num_rows
         node.num_cols = num_cols
+        node.element_type = expr_left.element_type
         return 'array'
 
     print(expr_left)
@@ -415,6 +542,8 @@ class TypeChecker(NodeVisitor):
         node.num_cols = 'unknown'
     else:
       node.num_cols = node.num_rows
+    
+    node.element_type = 'INTNUM'
 
     return 'array'
 
@@ -497,19 +626,29 @@ class TypeChecker(NodeVisitor):
   def visit_InnerList(self, node):
     first_elem = node.elements[0]
     first_elem_type = self.visit(first_elem)
-    #TODO: może tu wykluczyć jeszcze jakieś typy?
+    node.num_rows = 'unknown'
+    node.num_cols = 'unknown'
+    node.element_type = 'unknown'
+    if (first_elem_type == 'array' and
+        not first_elem.list is None and
+        first_elem.list.elements[0].type == 'array'):
+      print((f'ERROR in line {node.lineno}\n'
+             'Matrix can have maximum 2 dimensions\n'))
+      return node.type
     for elem in node.elements[1:]:
       elem_type = self.visit(elem)
       if elem_type != first_elem_type:
         print((f'ERROR in line {node.lineno}\n'
                f'Inconsistent types {first_elem_type} and {elem_type} in the array\n'))
-        break
+        return node.type
       elif first_elem_type == 'array' and first_elem.num_cols != elem.num_cols:
         print((f'ERROR in line {node.lineno}\n'
                f'Inconsistent shapes {first_elem.num_cols} and {elem.num_cols} in the array\n'))
-        break
-    # TODO: wykluczyć więcej niż 2 wymiary
-    if first_elem_type == 'array':
+        return node.type
+
+    node.element_type = first_elem_type
+
+    if node.element_type == 'array':
       node.num_cols = first_elem.num_cols
       node.num_rows = len(node.elements)
     else:
@@ -528,7 +667,7 @@ class TypeChecker(NodeVisitor):
           elem = self.symbol_table.get(elem.name)
           elem_type = self.visit(elem)
 
-      if not elem_type in ['INTNUM', 'RANGE', 'unknown']:
+      if not elem_type in ['INTNUM', 'range', 'unknown']:
         print((f'ERROR in line {node.lineno}\n'
                f'{elem_type} is not a valid array index type\n'))
         break
@@ -548,5 +687,4 @@ class TypeChecker(NodeVisitor):
     return node.type
 
 
-# TODO: numery linii coś nie działają
 # TODO: potestować ile się da
