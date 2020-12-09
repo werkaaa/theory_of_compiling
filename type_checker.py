@@ -25,7 +25,6 @@ class NodeVisitor(object):
 
 
   def generic_visit(self, node):
-    print(node)
     if isinstance(node, list):
       for elem in node:
         self.visit(elem)
@@ -50,49 +49,6 @@ class TypeChecker(NodeVisitor):
     return node.in_type
 
   def visit_Assignment(self, node):
-    # print('assignment')
-    # right = node.right
-    # left = node.left
-    # type_left = self.visit(left)
-    # type_right = self.visit(right)
-    #
-    # error_encountered = False
-    # if type_right == 'ID':
-    #   if self.variable_declared(right):
-    #     right = self.symbol_table.get(right.name)
-    #     type_right = self.visit(right)
-    #   else:
-    #     error_encountered = True
-    #
-    # if type_right == 'error':
-    #   error_encountered = True
-    # elif type_right not in ['array_element', 'INTNUM', 'FLOATNUM',
-    #                         'array', 'STRING',
-    #                         'TRANSPOSE', 'unary_minus', 'matrix_binary_operation'
-    #                         'number_binary_operation', 'boolean_expression']:
-    #   print((f'ERROR in line {node.lineno}\n'
-    #          f'{type_right} is not a valid type '
-    #          'for the right side of assignmet\n'))
-    #   error_encountered = True
-    #
-    # if type_left not in ['ID', 'array_element']:
-    #   print((f'ERROR in line {node.lineno}\n'
-    #          f'Cannot assign to {type_left}\n'))
-    #   error_encountered = True
-    #
-    #
-    # if (node.operator != '=' and
-    #     type_left == 'ID' and
-    #     self.variable_declared(node.left)):
-    #
-    # #if not error_encountered:
-    # self.symbol_table.put(node.left.name, node.right)
-    #   # print(self.symbol_table.table)
-    # return node.type
-    # TODO: Skoro nie potrzebujemy odrzucać nieporawnie zadeklarowanych zmiennych z tablicy
-    #  symboli, tę funkcję można mocno uprościć. Mógłbys się upewnić, że na pewno nie potrzebujemy
-    #  odrzucac takich zmiennych?
-    print('assignment')
     right = node.right
     left = node.left
     type_left = self.visit(left)
@@ -136,11 +92,6 @@ class TypeChecker(NodeVisitor):
         type_left == 'ID' and
         self.variable_declared(node.left)):
       type_variable = self.symbol_table.get(node.left.name).type
-      print(f'ltyp  {left.type}')
-      print(f'rtyp  {right.type}')
-      print(f'typl  {type_left}')
-      print(f'typr  {type_right}')
-      print(f'val   {type_variable}')
       if type_right == 'unknown' or type_left == 'unknown':
         pass
       elif type_variable == 'array': 
@@ -219,8 +170,6 @@ class TypeChecker(NodeVisitor):
       self.variable_declared(node.array)
       array = self.symbol_table.get(node.array.name)
       type_array = self.visit(node.array)
-      print(f'atype {array.type}')
-      print(f'typea {type_array}')
       if array.type == 'STRING':
         return 'STRING'
       elif array.type == 'array':
@@ -238,7 +187,6 @@ class TypeChecker(NodeVisitor):
     array = self.symbol_table.get(node.array.name)
 
     indices_num = len(node.ids.elements)
-    print(f'liczba indeksów: {indices_num}')
     if indices_num > 2:
       print((f'ERROR in line {node.lineno}\n'
              f'Indices inconsistent with dimensions \n'))
@@ -292,7 +240,6 @@ class TypeChecker(NodeVisitor):
     if new_row_num == 1 and new_col_num == 1:
       array = self.symbol_table.get(node.array.name)
       if array is not None:
-        print('tedy')
         return array.element_type
     else:
       node.num_rows = new_row_num
@@ -300,12 +247,6 @@ class TypeChecker(NodeVisitor):
       node.element_type = array.element_type
       return 'array'
 
-    # TODO: slicing - trzeba uwzględnić
-    #  trzeba z listIndex przekazać jakoś min i max zakres, żeby wiedzieć
-    #  czy nie sięgamy poza rozmiar array, należałoby też sprawdzić czy to
-    #  wgl jest array
-    # TODO: fajnie gdyby to zwracało typ elementu, lub array (wtedy node
-    #  z rozmiarem!) jeśli zastosowany był slicing, jeśli wystąpi bląd to node.type
     return node.type
 
   # Expressions
@@ -331,7 +272,6 @@ class TypeChecker(NodeVisitor):
     return node.type
 
   def visit_NumberBinaryOperation(self, node):
-    print('number_bin_op')
     expr_left = node.left
     expr_right = node.right
 
@@ -357,7 +297,6 @@ class TypeChecker(NodeVisitor):
 
     if (type_left in ['array', 'matrix_function', 'TRANSPOSE', 'matrix_binary_operation'] and
        type_right in ['array', 'matrix_function', 'TRANSPOSE', 'matrix_binary_operation']):
-    #if type_left == 'array' and type_right  == 'array':
 
       if node.operator == '*':
         if (expr_left.num_cols != 'unknown' and
@@ -386,8 +325,6 @@ class TypeChecker(NodeVisitor):
     elif type_left == 'STRING' and type_right == 'STRING' and node.operator == '+':
       return 'STRING'
 
-
-    print(expr_left)
     print((f'ERROR in line {node.lineno}\n'
            f'Operation {node.operator} not supported between {type_left} '
            f'and {type_right}\n'))
@@ -399,13 +336,11 @@ class TypeChecker(NodeVisitor):
     'matrix_binary_operation'. Either way, the node will have num_rows, num_cols
     attributes, which may be ste to unknown.
     """
-    print('number_bin_op')
     expr_left = node.left
     expr_right = node.right
 
     type_left = self.visit(expr_left)
     type_right = self.visit(expr_right)
-    print(f'dodaję {type_left, type_right}')
     if type_left == 'ID':
       if not self.variable_declared(node.left):
         type_left = 'unknown'
@@ -419,9 +354,6 @@ class TypeChecker(NodeVisitor):
       else:
         expr_right = self.symbol_table.get(node.right.name)
         type_right = self.visit(expr_right)
-
-    # if (type_left in ['unknown', 'number_binary_expression'] or
-    #     type_right in ['unknown', 'number_binary_expression']):
 
     if type_left == 'unknown' or type_right == 'unknown':
       node.num_rows = 'unknown'
@@ -457,7 +389,6 @@ class TypeChecker(NodeVisitor):
         node.element_type = expr_left.element_type
         return 'array'
 
-    print(expr_left)
     print((f'ERROR in line {node.lineno}\n'
            f'Operation {node.operator} not supported between {type_left} '
            f'and {type_right}\n'))
@@ -467,7 +398,6 @@ class TypeChecker(NodeVisitor):
     return node.type
 
   def visit_BooleanExpression(self, node):
-    print('boolean_exp')
     expr_left = node.left
     expr_right = node.right
 
@@ -490,13 +420,11 @@ class TypeChecker(NodeVisitor):
     if (type_left in ['unknown', 'number_binary_expression'] or
         type_right in ['unknown', 'number_binary_expression']):
       return node.type
-    print(type_left, type_right)
     if ((type_left in ['FLOATNUM', 'INTNUM'] and
          type_right in ['FLOATNUM', 'INTNUM']) or
         (type_left == 'STRING' and type_right == 'STRING')):
       return node.type
 
-    print(expr_left)
     print((f'ERROR in line {node.lineno}\n'
            f'Operator {node.operator} not supported between {type_left} '
            f'and {type_right}\n'))
@@ -577,7 +505,6 @@ class TypeChecker(NodeVisitor):
         value_type = self.visit(value)
 
     if value_type in ['array', 'matrix_function', 'TRANSPOSE', 'matrix_binary_operation']:
-    #if value_type == 'array':
       node.num_cols = value.num_rows
       node.num_rows = value.num_cols
     else:
@@ -686,5 +613,3 @@ class TypeChecker(NodeVisitor):
       self.visit(elem)
     return node.type
 
-
-# TODO: potestować ile się da
