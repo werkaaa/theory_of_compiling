@@ -208,13 +208,17 @@ class Parser:
 
   def p_array_variable(self, p):
     """variable : ID '[' list_indices ']'"""
-    p[0] = ArrayElement(Identifier(p[1]), p[3])
+    identifier = Identifier(p[1])
+    identifier.lineno = p.lineno(1)
+    p[0] = ArrayElement(identifier, p[3])
     p[0].lineno = p.lineno(1)
 
   def p_string_variable(self, p):
     """variable : STRING '[' list_indices ']'"""
-    p[0] = ArrayElement(p[1], p[3])
-    p[0].lineno = p.lineno(0)
+    string = String(p[1])
+    string.lineno = p.lineno(1)
+    p[0] = ArrayElement(string, p[3])
+    p[0].lineno = p.lineno(1)
 
   # Instructions
   def p_assignment(self, p):
@@ -242,7 +246,9 @@ class Parser:
 
   def p_for_instruction(self, p):
     """for_instruction : FOR ID ASSIGN range instruction """
-    p[0] = For(Identifier(p[2]), p[4], p[5])
+    identifier = Identifier(p[2])
+    identifier.lineno = p.lineno(1)
+    p[0] = For(identifier, p[4], p[5])
     p[0].lineno = p.lineno(1)
 
   def p_break_instruction(self, p):
