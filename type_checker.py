@@ -31,8 +31,10 @@ class NodeVisitor(object):
 
 class TypeChecker(NodeVisitor):
 
+
   def visit_Program(self, node):
     self.symbol_table = SymbolTable('program', 'program_table')
+    self.loop_scopes_cnt = 0
     self.visit(node.instructions_opt)
     return node.type
 
@@ -112,15 +114,24 @@ class TypeChecker(NodeVisitor):
     self.visit(node.variable)
     self.visit(node.range)
     self.symbol_table.push_scope('loop')
-    self.symbol_table.put_local(node.variable, ast.IntNum(node.range.start_value))
+    self.loop_scopes_cnt += 1
+    if self.symbol_table.get(node.variable.name) != None:
+      print((f'ERROR in line {node.lineno}\n'
+             f'{node.variable.name} cannot be an iterating variable, '
+             'it was already declared\n'))
+    else:
+      self.symbol_table.put(node.variable.name, ast.IntNum(node.range.start_value.value))
     self.visit(node.instruction)
+    self.loop_scopes_cnt -= 1
     self.symbol_table.pop_scope()
     return node.type
 
   def visit_While(self, node):
     self.visit(node.condition)
     self.symbol_table.push_scope('loop')
+    self.loop_scopes_cnt += 1
     self.visit(node.instruction)
+    self.loop_scopes_cnt -= 1
     self.symbol_table.pop_scope()
     return node.type
 
@@ -134,17 +145,17 @@ class TypeChecker(NodeVisitor):
       self.visit(node.if_block)
       self.symbol_table.pop_scope()
 
-    return self.type
+    return node.type
 
   def visit_Break(self, node):
-    if not self.symbol_table.get_scope() == 'loop':
+    if self.loop_scopes_cnt == 0:
       print((f'ERROR in line {node.lineno}\n'
              f'Cannot break from current scope\n'))
 
     return node.type
 
   def visit_Continue(self, node):
-    if not self.symbol_table.get_scope() == 'loop':
+    if self.loop_scopes_cnt == 0:
       print((f'ERROR in line {node.lineno}\n'
              f'Cannot continue in current scope\n'))
 

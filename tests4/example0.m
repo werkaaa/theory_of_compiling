@@ -10,3 +10,13 @@ t = [[2, 2],
 n = eye(3) .+ t;
 v = n;
 m = n + 2;
+d = 2;
+for b = 1:4{
+ if (0 < 2){
+ break;
+ }
+ i = 1;
+ d = 3;
+}
+print i;
+print d;
