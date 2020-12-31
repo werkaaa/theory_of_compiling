@@ -1,18 +1,7 @@
 import ast
 from symbol_table import SymbolTable
+from collections import defaultdict
 
-TYPE_MAP = {
-  'INTNUM':
-    {
-      'FLOATNUM': 'FLOATNUM',
-      'INTNUM': 'INTNUM'
-    },
-  'FLOATNUM':
-    {
-      'FLOATNUM': 'FLOATNUM',
-      'INTNUM': 'FLOATNUM'
-    }
-}
 
 class NodeVisitor(object):
 
@@ -29,8 +18,274 @@ class NodeVisitor(object):
       for elem in node:
         self.visit(elem)
 
+
 class TypeChecker(NodeVisitor):
 
+  TYPE_MAP = None
+
+
+  def __init__(self):
+    TypeChecker.initialize_type_dict()
+
+  def get_type(self, *args):
+    """ Obtain infered type from the dictionary.
+
+      There are several types of possible usage:
+        - NumberBinaryOperation
+         & MatrixBinaryOperation
+         & BooleanExpression:
+          get_type(op, type_left, type_right)
+            Simply get the infered type from dict.
+        - Assign:
+          get_type(op, type_left, type_right, detailed_type_left)
+            type_left is either ID or array_element. detailed_type_left is
+            more precise type of left operand f.e. if type_left was ID,
+            detailed_type_left could be the type of variable (like INTNUM),
+            having this ID.
+    """
+
+    result_type = self.TYPE_MAP[args[0]]
+    for arg in args[1:]:
+      if type(result_type) in [dict, defaultdict]:
+        result_type = result_type[arg]
+      else:
+        break
+    return result_type
+
+  @classmethod
+  def initialize_type_dict(cls):
+    if cls.TYPE_MAP: return
+    else: cls.TYPE_MAP = defaultdict(lambda: 'unknown')
+
+    # Available operations for '+', '-', '/'
+    default_num_binop = defaultdict(lambda: 'number_binary_operation', 
+      {
+        'INTNUM'   : defaultdict(lambda: 'error_op_not_sup',
+          {
+            'INTNUM'   : 'INTNUM',
+            'FLOATNUM' : 'FLOATNUM',
+          }),
+        'FLOATNUM' : defaultdict(lambda: 'error_op_not_sup',
+          {
+            'INTNUM'   : 'FLOATNUM',
+            'FLOATNUM' : 'FLOATNUM',
+          }),
+
+        'array'                     : defaultdict(lambda: 'error_op_not_sup'),
+        'TRANSPOSE'                 : defaultdict(lambda: 'error_op_not_sup'),
+        'matrix_binary_operation'   : defaultdict(lambda: 'error_op_not_sup'),
+        'STRING'                    : defaultdict(lambda: 'error_op_not_sup'), 
+      })
+
+    matrix_mul_dict = defaultdict(lambda: 'error_op_not_sup',
+      {
+        'array'                    : 'array',
+        'TRANSPOSE'                : 'array',
+        'matrix_binary_operation'  : 'array',
+      })
+
+    # Number Subtraction
+    cls.TYPE_MAP['-'] = default_num_binop
+
+    # Number Division
+    cls.TYPE_MAP['/'] = default_num_binop
+
+    # Number Addition
+    cls.TYPE_MAP['+'] = default_num_binop.copy()
+    cls.TYPE_MAP['+']['STRING']['STRING'] = 'STRING'
+    
+    # Number Multiplication
+    cls.TYPE_MAP['*'] = default_num_binop.copy()
+    cls.TYPE_MAP['*']['array']                   = matrix_mul_dict
+    cls.TYPE_MAP['*']['matrix_function']         = matrix_mul_dict
+    cls.TYPE_MAP['*']['TRANSPOSE']               = matrix_mul_dict
+    cls.TYPE_MAP['*']['matrix_binary_operation'] = matrix_mul_dict
+
+    left_mat_op = defaultdict(lambda: 'matrix_binary_operation',
+      {
+        'array': 'array',
+        'matrix_function': 'array',
+        'TRANSPOSE': 'array',
+        'matrix_binary_operation': 'array',
+      })
+
+    default_mat_op = defaultdict(lambda: 'matrix_binary_operation',
+      {
+        'array':                   left_mat_op,
+        'matrix_function':         left_mat_op,
+        'TRANSPOSE':               left_mat_op,
+        'matrix_binary_operation': left_mat_op,
+      })
+
+    # Matrix Operations
+    cls.TYPE_MAP['.+'] = default_mat_op
+    cls.TYPE_MAP['.-'] = default_mat_op
+    cls.TYPE_MAP['.*'] = default_mat_op
+    cls.TYPE_MAP['./'] = default_mat_op
+
+    assignable_types = [
+      'ID',
+      'INTNUM',
+      'FLOATNUM',
+      'array',
+      'STRING',
+      'TRANSPOSE',
+      'unary_minus',
+      'matrix_binary_operation',
+      'number_binary_operation',
+      'unknown',
+      'array_element',
+    ]
+
+    array_assignment_dict = defaultdict(lambda : 'error_op_not_sup',
+      {
+        'array' : 'array',
+        'TRANSPOSE': 'array',
+        'unary_minus' : 'array',
+        'matrix_binary_operation' : 'array',
+      })
+
+    assign_map = defaultdict(lambda : 'error_left_invalid',
+      {
+        'ID' : defaultdict(lambda : 'error_right_invalid',  
+          {key : 'ASSIGN' for key in assignable_types}),
+        'array_element' : defaultdict(lambda : 'error_right_invalid',
+          {
+            # Unknown
+            'unknown' : 'unknown',
+            'array_element' : 'unknown',
+            # Numbers
+            'INTNUM' : defaultdict(lambda : 'error_op_not_sup',
+              {
+                'INTNUM' : 'INTNUM',
+                'FLOATNUM' : 'FLOATNUM',
+                'number_binary_operation' : 'unknown',
+                'unknown' : 'unknown',
+              }),
+            'FLOATNUM' : defaultdict(lambda : 'error_op_not_sup',
+              {
+                'INTNUM' : 'FLOATNUM',
+                'FLOATNUM' : 'FLOATNUM',
+                'number_binary_operation' : 'unknown',
+                'unknown' : 'unknown',
+              }),
+            'number_binary_operation' : defaultdict(lambda : 'error_op_not_sup',
+              {
+                'INTNUM' : 'INTNUM',
+                'FLOATNUM' : 'FLOATNUM',
+                'number_binary_operation' : 'unknown',
+                'unknown' : 'unknown',
+              }),
+            # Arrays
+            'array' :                   array_assignment_dict,
+            'TRANSPOSE':                array_assignment_dict,
+            'unary_minus' :             array_assignment_dict,
+            'matrix_binary_operation' : array_assignment_dict,
+            # String
+            'STRING' : defaultdict(lambda : 'error_op_not_sup',
+              {
+                'STRING' : 'STRING',
+                'unknown' : 'unknown',
+              }),
+          })
+      })
+    
+    # Assignment
+    cls.TYPE_MAP['='] = assign_map
+
+    num_op_assign_map = defaultdict(lambda : 'error_op_not_sup',
+      {
+        'FLOATNUM' : 'ASSIGN',
+        'INTNUM' : 'ASSIGN',
+        'number_binary_operation' : 'ASSIGN',
+      })
+
+    op_assign_id_map = defaultdict(lambda : 'error_right_invalid',  
+      {
+        'unknown' :                 'ASSIGN',
+        'FLOATNUM' :                num_op_assign_map,
+        'INTNUM' :                  num_op_assign_map,
+        'number_binary_operation' : num_op_assign_map,
+        'STRING' :                  'error_op_not_sup',
+        'array' :                   'error_op_not_sup',
+        'TRANSPOSE' :               'error_op_not_sup',
+        'unary_minus' :             'error_op_not_sup',
+        'matrix_binary_operation' : 'error_op_not_sup',
+      })
+
+    op_assign_map = defaultdict(lambda : 'error_left_invalid',
+      {
+        'ID' : op_assign_id_map.copy(),
+
+        'array_element' : defaultdict(lambda : 'error_right_invalid',
+          {
+            # Unknown
+            'unknown' : 'unknown',
+            # Numbers
+            'INTNUM' : defaultdict(lambda : 'error_op_not_sup',
+              {
+                'INTNUM' : 'INTNUM',
+                'FLOATNUM' : 'FLOATNUM',
+                'number_binary_operation' : 'unknown',
+                'unknown' : 'unknown',
+              }),
+            'FLOATNUM' : defaultdict(lambda : 'error_op_not_sup',
+              {
+                'INTNUM' : 'FLOATNUM',
+                'FLOATNUM' : 'FLOATNUM',
+                'number_binary_operation' : 'unknown',
+                'unknown' : 'unknown',
+              }),
+            'number_binary_operation' : defaultdict(lambda : 'error_op_not_sup',
+              {
+                'INTNUM' : 'INTNUM',
+                'FLOATNUM' : 'FLOATNUM',
+                'number_binary_operation' : 'unknown',
+                'unknown' : 'unknown',
+              }),
+            # Arrays
+            'array' :                   'error_op_not_sup',
+            'TRANSPOSE':                'error_op_not_sup',
+            'unary_minus' :             'error_op_not_sup',
+            'matrix_binary_operation' : 'error_op_not_sup',
+            # String
+            'STRING' :                  'error_op_not_sup',
+          })
+      })
+
+
+    # Operation assignment
+    cls.TYPE_MAP['-='] = op_assign_map
+    cls.TYPE_MAP['*='] = op_assign_map
+    cls.TYPE_MAP['/='] = op_assign_map
+    cls.TYPE_MAP['+='] = op_assign_map.copy()
+
+    cls.TYPE_MAP['+=']['ID'] = op_assign_id_map.copy()
+    cls.TYPE_MAP['+=']['ID']['STRING'] = defaultdict(lambda : 'error_op_not_sup',
+      {
+        'STRING' : 'ASSIGN',
+      })
+
+    bool_exp_map = defaultdict(lambda : 'error_op_not_sup',
+      {
+        'unknown' :                   'boolean_expression',
+        'number_binary_expression' :  'boolean_expression',
+        'INTNUM' :                    'boolean_expression',
+        'FLOATNUM' :                  'boolean_expression',
+      })
+
+    cls.TYPE_MAP['bool'] = defaultdict(lambda : 'error_op_not_sup',
+      {
+        'unknown' : bool_exp_map,
+        'number_binary_expression' : bool_exp_map,
+        'INTNUM' : bool_exp_map,
+        'FLOATNUM': bool_exp_map,
+        'STRING' : defaultdict(lambda : 'error_op_not_sup',
+          {
+            'STRING' : 'boolean_expression'
+          }),
+
+      })
 
   def visit_Program(self, node):
     self.symbol_table = SymbolTable('program', 'program_table')
@@ -53,7 +308,7 @@ class TypeChecker(NodeVisitor):
   def visit_Assignment(self, node):
     right = node.right
     left = node.left
-    type_left = self.visit(left)
+    type_left = left.type
     type_right = self.visit(right)
 
     if type_right == 'ID':
@@ -61,51 +316,75 @@ class TypeChecker(NodeVisitor):
         right = self.symbol_table.get(right.name)
         type_right = self.visit(right)
 
-    elif type_right not in ['array_element', 'INTNUM', 'FLOATNUM', 'array', 'STRING',
-                            'TRANSPOSE', 'unary_minus', 'matrix_binary_operation',
-                            'number_binary_operation', 'boolean_expression', 'unknown']:
-      print((f'ERROR in line {node.lineno}\n'
-             f'{type_right} is not a valid type '
-             'for the right side of assignmet\n'))
+    num_rows = -1
+    num_cols = -1
+    elem_type_left = type_left
+    # Get more precise left type. There are only two options
+    # available for type_left: ID and array_element (it is due
+    # to parser's specification)
+    if type_left == 'ID' and node.operator != '=':
+      if self.variable_declared(left):
+        left = self.symbol_table.get(left.name)
+        type_left = self.visit(left)
+        elem_type_left = type_left
+    elif type_left == 'array_element':
+      type_left = self.visit(left)
+      if left.array.type == 'STRING':
+        left = left.array
+        type_left = 'STRING'
+        if node.operator != '=':
+          print((f'ERROR in line {node.lineno}\n'
+                 f'Operational assignment to a substring\n'))
+          return node.type
+      else:
+        left = self.symbol_table.get(left.array.name)
+        type_left = self.visit(left)
+        elem_type_left = type_left
+        if type_left != 'STRING':
+          elem_type_left = left.element_type
+          num_rows = node.left.num_rows
+          num_cols = node.left.num_cols
+          if num_rows == 1 and num_cols == 1:
+            type_left = elem_type_left
 
-    if left.type not in ['ID', 'array_element']:
+    result_type = self.get_type(node.operator, node.left.type,
+                                type_right, type_left)
+
+    if result_type == 'error_left_invalid':
       print((f'ERROR in line {node.lineno}\n'
              f'Cannot assign to {left.type}\n'))
+      return node.type
 
-    # Array slicing correctness check.
-    if left.type == 'array_element':
-      if type_left == 'array':
-        if type_right not in ['unknown', 'array', 'array_element',
-                     'matrix_binary_operation', 'matrix_function']:
-          print((f'ERROR in line {node.lineno}\n'
-                 f'Assigning wrong type to a subarray\n'))
-          return node.type
-      elif type_left == 'STRING' and type_right != 'STRING':
-        print((f'ERROR in line {node.lineno}\n'
-               f'Assigning wrong type to a substring\n'))
-        return node.type
-      elif type_left != type_right:
-        print((f'ERROR in line {node.lineno}\n'
-               f'Assigning subarray to the single array element\n'))
-        return node.type
-   
-    # Operation and assingment correctness check.
-    if (node.operator != '=' and
-        type_left == 'ID' and
-        self.variable_declared(node.left)):
-      type_variable = self.symbol_table.get(node.left.name).type
-      if type_right == 'unknown' or type_left == 'unknown':
-        pass
-      elif type_variable == 'array' or (type_variable == 'STRING' and node.operator != '+='): 
-        print((f'ERROR in line {node.lineno}\n'
-               f"Operation '{node.operator}' unavailable for type {type_variable}\n"))
-      elif type_right != type_variable:
-        print((f'ERROR in line {node.lineno}\n'
-               f"Type mismatch in '{node.operator}' assignment\n"))
-        return node.type
-  
+    if result_type == 'error_right_invalid':
+      print((f'ERROR in line {node.lineno}\n'
+             f'{type_right} is not a valid type '
+             f'for the right side of assignmet\n'))
+      return node.type
+
+    if result_type == 'error_op_not_sup':
+      print((f'ERROR in line {node.lineno}\n'
+             f'Cannot {node.operator} assign type {type_right} '
+             f'to array of type {elem_type_left}\n'))
+      return node.type
+
+    if node.operator == '=':
+      if result_type == 'array':
+        if (right.num_rows != 'unknown' and right.num_cols != 'unknown' and
+            num_rows != 'unknown' and num_cols != 'unknown' and 
+            (right.num_rows != num_rows or right.num_cols != num_cols)):
+            print((f'ERROR in line {node.lineno}\n'
+                   f'Inconsistent dimensions of arrays\n'))
+            node.left.array.element_type = 'unknown'
+            return node.type
+
+      if result_type in ['unknown', 'FLOATNUM', 'INTNUM']:
+        node.left.array.element_type = result_type
+    else:
+      if result_type in ['unknown', 'FLOATNUM', 'INTNUM']:
+        node.left.array.element_type = result_type
+
     # Add symbol to symbol table.
-    if left.type != 'array_element':
+    if node.left.type != 'array_element':
       self.symbol_table.put(node.left.name, node.right)
 
     return node.type
@@ -171,33 +450,42 @@ class TypeChecker(NodeVisitor):
     return node.type
 
   def visit_ArrayElement(self, node):
-    self.visit(node.array)
+    arr_type = self.visit(node.array)
     self.visit(node.ids)
 
     num_rows, num_cols = 1, 1
+    array = None
     if node.array.type == 'STRING':
+      # Check correcntess of indexes
+      indices = node.ids.elements
+      if len(indices) > 2 or (len(indices) == 2 and indices[0].value != 0):
+        print((f'ERROR in line {node.lineno}\n'
+               f'Indices inconsistent with dimensions \n'))
+        return node.type
       return 'STRING'
     else:
       self.variable_declared(node.array)
       array = self.symbol_table.get(node.array.name)
-      type_array = self.visit(node.array)
-      if array.type == 'STRING':
+      type_array = self.visit(array)
+      if type_array == 'STRING':
+        indices = node.ids.elements
+        if len(indices) > 2 or (len(indices) == 2 and indices[0].value != 0):
+          print((f'ERROR in line {node.lineno}\n'
+                 f'Indices inconsistent with dimensions \n'))
         return 'STRING'
-      elif array.type == 'array':
+      elif type_array in ['array', 'matrix_binary_operation']:
         num_rows = array.num_rows
         num_cols = array.num_cols
-      elif array.type in ['matrix_function', 'matrix_binary_operation']:
-        pass
-      elif array.type == 'unknown':
+      elif type_array == 'unknown':
         return node.type
       else:
         print((f'ERROR in line {node.lineno}\n'
                f'Subscripted value is neither array nor string\n'))
         return node.type
 
-    array = self.symbol_table.get(node.array.name)
-
     indices_num = len(node.ids.elements)
+    new_row_num = 1
+    new_col_num = 1
     if indices_num > 2:
       print((f'ERROR in line {node.lineno}\n'
              f'Indices inconsistent with dimensions \n'))
@@ -205,56 +493,53 @@ class TypeChecker(NodeVisitor):
     elif len(node.ids.elements) == 2:
       row_idx = node.ids.elements[0]
       col_idx = node.ids.elements[1]
-      new_row_num = 1
-      new_col_num = 1
       if row_idx.type == 'range':
+        is_array = True
         if num_rows != 'unknown' and row_idx.end_value.value > num_rows:
           print((f'ERROR in line {node.lineno}\n'
                  f'Row index out of range\n'))
-        new_row_num = row_idx.end_value.value - row_idx.start_value.value + 1
+        new_row_num = row_idx.end_value.value - row_idx.start_value.value
       elif row_idx.type == 'INTNUM':
-        if num_rows != 'unknown' and row_idx.value > num_rows:
+        if num_rows != 'unknown' and row_idx.value >= num_rows:
           print((f'ERROR in line {node.lineno}\n'
                  f'Row index out of range\n'))
       if col_idx.type == 'range':
+        is_array = True
         if num_cols != 'unknown' and col_idx.end_value.value > num_cols:
           print((f'ERROR in line {node.lineno}\n'
                  f'Column index out of range\n'))
-        new_col_num = col_idx.end_value.value - col_idx.start_value.value + 1
+        new_col_num = col_idx.end_value.value - col_idx.start_value.value
       elif col_idx.type == 'INTNUM':
-        if num_cols != 'unknown' and col_idx.value > num_cols:
+        if num_cols != 'unknown' and col_idx.value >= num_cols:
           print((f'ERROR in line {node.lineno}\n'
                  f'Column index out of range\n'))
-      if new_row_num < 0 or new_col_num < 0:
+      if new_row_num <= 0 or new_col_num <= 0:
         print((f'ERROR in line {node.lineno}\n'
                f'Wrong indexing\n'))
-      if new_row_num > 1 or new_col_num > 1:
-        node.num_rows = new_row_num
-        node.num_cols = new_col_num
     else:
       col_idx = node.ids.elements[0]
-      new_row_num = 1
-      new_col_num = 1
       if col_idx.type == 'range':
         if num_cols != 'unknown' and col_idx.end_value.value > num_cols:
           print((f'ERROR in line {node.lineno}\n'
                  f'Index out of range\n'))
-        new_col_num = col_idx.end_value.value - col_idx.start_value.value + 1 
+        new_col_num = col_idx.end_value.value - col_idx.start_value.value
       elif col_idx.type == 'INTNUM':
-        if num_cols != 'unknown' and col_idx.value > num_cols:
+        if num_cols != 'unknown' and col_idx.value >= num_cols:
           print((f'ERROR in line {node.lineno}\n'
                  f'Column index out of range\n'))
-      if new_col_num < 0:
+      if new_col_num <= 0:
         print((f'ERROR in line {node.lineno}\n'
                f'Wrong indexing\n'))
 
+    node.num_rows = new_row_num
+    node.num_cols = new_col_num
     if new_row_num == 1 and new_col_num == 1:
       array = self.symbol_table.get(node.array.name)
+      node.element_type = 'unknown'
       if array is not None:
+        node.element_type = array.element_type
         return array.element_type
     else:
-      node.num_rows = new_row_num
-      node.num_cols = new_col_num
       node.element_type = array.element_type
       return 'array'
 
@@ -275,7 +560,10 @@ class TypeChecker(NodeVisitor):
       self.visit(node.list)
       node.num_rows = node.list.num_rows
       node.num_cols = node.list.num_cols
-      node.element_type = node.list.element_type
+      if node.list.element_type == 'unary_minus':
+        node.element_type = 'unknown'
+      else:
+        node.element_type = node.list.element_type
     else:
       node.num_rows = 'unknown'
       node.num_cols = 'unknown'
@@ -288,6 +576,8 @@ class TypeChecker(NodeVisitor):
 
     type_left = self.visit(expr_left)
     type_right = self.visit(expr_right)
+
+    # Read types of IDs
     if type_left == 'ID':
       if not self.variable_declared(node.left):
         type_left = 'unknown'
@@ -301,19 +591,25 @@ class TypeChecker(NodeVisitor):
       else:
         expr_right = self.symbol_table.get(node.right.name)
         type_right = self.visit(expr_right)
+   
+    # Get type of result
+    result_type = self.get_type(node.operator, type_left, type_right)
+    
+    if result_type == 'error_op_not_sup':
+      if type_left == 'matrix_binary_operation':
+        type_left = 'array'
+      if type_right == 'matrix_binary_operation':
+        type_right = 'array'
+      print((f'ERROR in line {node.lineno}\n'
+             f'Operation {node.operator} not supported between {type_left} '
+             f'and {type_right}\n'))
+      return 'number_binary_operation'
 
-    if (type_left in ['unknown', 'number_binary_operation', 'unary_minus'] or
-        type_right in ['unknown', 'number_binary_operation', 'unary_minus']):
-      return node.type
-
-    if (type_left in ['array', 'matrix_function', 'TRANSPOSE', 'matrix_binary_operation'] and
-       type_right in ['array', 'matrix_function', 'TRANSPOSE', 'matrix_binary_operation']):
-
-      if node.operator == '*':
+    # Check correctness of dimensions for array
+    if result_type == 'array':
         if (expr_left.num_cols != 'unknown' and
             expr_right.num_rows != 'unknown' and
             expr_left.num_cols != expr_right.num_rows):
-
           print((f'ERROR in line {node.lineno}\n'
                  f'Inconsistent shape. Cannot {node.operator} '
                  f'matrices of shape {expr_left.num_rows}x{expr_left.num_cols} '
@@ -324,29 +620,16 @@ class TypeChecker(NodeVisitor):
         else:
           node.num_rows = expr_left.num_rows
           node.num_cols = expr_right.num_cols
-          return 'array'
-      else:
-        print((f'ERROR in line {node.lineno}\n'
-               f'Operation {node.operator} not supported between {type_left} '
-               f'and {type_right}\n'))
-        return node.type
-    elif type_left in ['FLOATNUM', 'INTNUM'] and type_right in ['FLOATNUM', 'INTNUM']:
-      node.value = 'unknown'
-      return TYPE_MAP[type_left][type_right]
-    elif type_left == 'STRING' and type_right == 'STRING' and node.operator == '+':
-      return 'STRING'
+          return result_type
 
-    print((f'ERROR in line {node.lineno}\n'
-           f'Operation {node.operator} not supported between {type_left} '
-           f'and {type_right}\n'))
-
-    return node.type
+    return result_type
 
   def visit_MatrixBinaryOperation(self, node):
     """If successful will return 'array' type if not successful will return
     'matrix_binary_operation'. Either way, the node will have num_rows, num_cols
-    attributes, which may be ste to unknown.
+    attributes, which may be set to unknown.
     """
+
     expr_left = node.left
     expr_right = node.right
 
@@ -366,15 +649,25 @@ class TypeChecker(NodeVisitor):
         expr_right = self.symbol_table.get(node.right.name)
         type_right = self.visit(expr_right)
 
+    result_type = self.get_type(node.operator, type_left, type_right)
+
     if type_left == 'unknown' or type_right == 'unknown':
       node.num_rows = 'unknown'
       node.num_cols = 'unknown'
       node.element_type = 'unknown'
-      return node.type
+      return result_type
 
-    if (type_left in ['array', 'matrix_function', 'TRANSPOSE', 'matrix_binary_expression'] and
-       type_right in ['array', 'matrix_function', 'TRANSPOSE', 'matrix_binary_expression']):
-      node.element_type = 'unknown'
+    if result_type == 'array':
+      if expr_left.element_type == 'unknown' or expr_right.element_type == 'unknown':
+        node.element_type = 'unknown'
+      else:
+        element_type = self.get_type(node.operator, expr_left.element_type, expr_right.element_type)
+        if element_type == 'error_op_not_sup':
+          print((f'ERROR in line {node.lineno}\n'
+                 f'Operation {node.operator} not supported between array of {type_left} '
+                f'and array of {type_right}\n'))
+          return 'matrix_binary_operation'
+
       if expr_left.num_rows == 'unknown' or expr_right.num_rows == 'unknown':
         num_rows = 'unknown'
       else:
@@ -384,7 +677,8 @@ class TypeChecker(NodeVisitor):
         num_cols = 'unknown'
       else:
         num_cols = expr_left.num_cols
-
+    
+      # Matrix dimensions correctness check
       if ((num_cols != 'unknown' and expr_right.num_cols != expr_left.num_cols) or
           (num_rows != 'unknown' and expr_right.num_rows != expr_left.num_rows)):
         print((f'ERROR in line {node.lineno}\n'
@@ -398,7 +692,7 @@ class TypeChecker(NodeVisitor):
         node.num_rows = num_rows
         node.num_cols = num_cols
         node.element_type = expr_left.element_type
-        return 'array'
+        return result_type
 
     print((f'ERROR in line {node.lineno}\n'
            f'Operation {node.operator} not supported between {type_left} '
@@ -406,7 +700,7 @@ class TypeChecker(NodeVisitor):
 
     node.num_rows = 'unknown'
     node.num_cols = 'unknown'
-    return node.type
+    return result_type
 
   def visit_BooleanExpression(self, node):
     expr_left = node.left
@@ -428,17 +722,12 @@ class TypeChecker(NodeVisitor):
         expr_right = self.symbol_table.get(node.right.name)
         type_right = self.visit(expr_right)
 
-    if (type_left in ['unknown', 'number_binary_expression'] or
-        type_right in ['unknown', 'number_binary_expression']):
-      return node.type
-    if ((type_left in ['FLOATNUM', 'INTNUM'] and
-         type_right in ['FLOATNUM', 'INTNUM']) or
-        (type_left == 'STRING' and type_right == 'STRING')):
-      return node.type
+    result_type = self.get_type('bool', type_left, type_right)
 
-    print((f'ERROR in line {node.lineno}\n'
-           f'Operator {node.operator} not supported between {type_left} '
-           f'and {type_right}\n'))
+    if result_type == 'error_op_not_sup':
+      print((f'ERROR in line {node.lineno}\n'
+             f'Operator {node.operator} not supported between {type_left} '
+             f'and {type_right}\n'))
 
     return node.type
 
@@ -515,7 +804,7 @@ class TypeChecker(NodeVisitor):
         value = self.symbol_table.get(value.name)
         value_type = self.visit(value)
 
-    if value_type in ['array', 'matrix_function', 'TRANSPOSE', 'matrix_binary_operation']:
+    if value_type in ['array', 'TRANSPOSE', 'matrix_binary_operation']:
       node.num_cols = value.num_rows
       node.num_rows = value.num_cols
     else:
@@ -568,6 +857,7 @@ class TypeChecker(NodeVisitor):
     node.num_cols = 'unknown'
     node.element_type = 'unknown'
     if (first_elem_type == 'array' and
+        first_elem.type not in ['matrix_function', 'TRANSPOSE'] and
         not first_elem.list is None and
         first_elem.list.elements[0].type == 'array'):
       print((f'ERROR in line {node.lineno}\n'
