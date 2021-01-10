@@ -223,7 +223,8 @@ class TypeChecker(NodeVisitor):
             'unknown' : 'unknown',
             # Numbers
             'INTNUM' : defaultdict(lambda : 'error_op_not_sup',
-              {
+              {    
+                # Here INTNUM (and others) means intnum or array of type intnum
                 'INTNUM' : 'INTNUM',
                 'FLOATNUM' : 'FLOATNUM',
                 'number_binary_operation' : 'unknown',
@@ -376,7 +377,10 @@ class TypeChecker(NodeVisitor):
                    f'Inconsistent dimensions of arrays\n'))
             node.left.array.element_type = 'unknown'
             return node.type
-
+   
+      # result_type can be FLOATNUM or INTNUM only when we assign
+      # to a subarray or array element. This is how we infere
+      # the type of resulting array element.
       if result_type in ['unknown', 'FLOATNUM', 'INTNUM']:
         node.left.array.element_type = result_type
     else:
@@ -594,7 +598,7 @@ class TypeChecker(NodeVisitor):
    
     # Get type of result
     result_type = self.get_type(node.operator, type_left, type_right)
-    
+   
     if result_type == 'error_op_not_sup':
       if type_left == 'matrix_binary_operation':
         type_left = 'array'
@@ -607,20 +611,25 @@ class TypeChecker(NodeVisitor):
 
     # Check correctness of dimensions for array
     if result_type == 'array':
-        if (expr_left.num_cols != 'unknown' and
-            expr_right.num_rows != 'unknown' and
-            expr_left.num_cols != expr_right.num_rows):
-          print((f'ERROR in line {node.lineno}\n'
-                 f'Inconsistent shape. Cannot {node.operator} '
-                 f'matrices of shape {expr_left.num_rows}x{expr_left.num_cols} '
-                 f'and {expr_right.num_rows}x{expr_right.num_cols}\n'))
-          node.num_rows = expr_left.num_rows
-          node.num_cols = expr_right.num_cols
-          return 'matrix_binary_operation'
-        else:
-          node.num_rows = expr_left.num_rows
-          node.num_cols = expr_right.num_cols
-          return result_type
+      # This line deletes preceding dot in elementwise operations
+      operator = node.operator[-1]
+      node.element_type = self.get_type(operator, expr_left.element_type,
+                                        expr_right.element_type)
+
+      if (expr_left.num_cols != 'unknown' and
+          expr_right.num_rows != 'unknown' and
+          expr_left.num_cols != expr_right.num_rows):
+        print((f'ERROR in line {node.lineno}\n'
+               f'Inconsistent shape. Cannot {node.operator} '
+               f'matrices of shape {expr_left.num_rows}x{expr_left.num_cols} '
+               f'and {expr_right.num_rows}x{expr_right.num_cols}\n'))
+        node.num_rows = expr_left.num_rows
+        node.num_cols = expr_right.num_cols
+        return 'matrix_binary_operation'
+      else:
+        node.num_rows = expr_left.num_rows
+        node.num_cols = expr_right.num_cols
+        return result_type
 
     return result_type
 
