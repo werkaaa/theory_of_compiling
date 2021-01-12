@@ -7,6 +7,7 @@ def on(param_name):
     def f(fn):
         dispatcher = Dispatcher(param_name, fn)
         return dispatcher
+
     return f
 
 
@@ -21,8 +22,10 @@ def when(param_type):
 
         def ff(*args, **kw):
             return dispatcher(*args, **kw)
+
         ff.dispatcher = dispatcher
         return ff
+
     return f
 
 
