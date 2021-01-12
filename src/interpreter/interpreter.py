@@ -1,8 +1,7 @@
-from ast import *
-import symbol_table
-from memory import *
-from exceptions import  *
-from visit import *
+from interpreter.ast import *
+from interpreter.memory import *
+from interpreter.exceptions import  *
+from interpreter.visit import *
 import numpy as np
 import operator as op
 import sys

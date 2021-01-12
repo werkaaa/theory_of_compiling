@@ -1,5 +1,5 @@
-import ast
-from symbol_table import SymbolTable
+from interpreter import ast
+from interpreter.symbol_table import SymbolTable
 from collections import defaultdict
 
 

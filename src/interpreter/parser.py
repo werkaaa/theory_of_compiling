@@ -1,10 +1,10 @@
 #!/usr/bin/python
-from ast import *
+from interpreter.ast import *
 import ply.yacc as yacc
-import scanner
+import interpreter.scanner
 
 class Parser:
-  tokens = scanner.Scanner().tokens
+  tokens = interpreter.scanner.Scanner().tokens
 
   precedence = (
       ("nonassoc", 'IFX'),

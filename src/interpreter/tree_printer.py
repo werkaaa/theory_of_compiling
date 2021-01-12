@@ -1,4 +1,4 @@
-from ast import *
+from interpreter.ast import *
 
 def addToClass(cls):
   def decorator(func):

@@ -4,3 +4,8 @@ __pycache__
 # Parser generator output files
 parser.out
 parsetab.py
+
+# PyCharm
+/venv/
+/.idea
+/inspectionProfiles/
