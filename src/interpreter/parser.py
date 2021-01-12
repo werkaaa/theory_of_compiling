@@ -23,10 +23,15 @@ class Parser:
 
     start = 'program'
 
+    GOT_SYNTAX_ERROR = False
+
     # Builds the parser
     def __init__(self, lexer):
-        self._lexer = lexer
+        self._lexer = lexer.lexer
         self.parser = yacc.yacc(module=self)
+
+    def parse(self, text):
+        return self.parser.parse(text)
 
     @staticmethod
     def p_error(p):
@@ -34,6 +39,7 @@ class Parser:
             print("Syntax error at line {0}: LexToken({1}, '{2}')".format(p.lineno, p.type, p.value))
         else:
             print("Unexpected end of input")
+        Parser.GOT_SYNTAX_ERROR = True
 
     @staticmethod
     def p_program(p):

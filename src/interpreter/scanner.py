@@ -1,7 +1,7 @@
 """
 Script with Scanner class.
 
-For each lexem scanner returns its token, line number and the lexem itself.
+For each lexeme scanner returns its token, line number and the lexeme itself.
 """
 import ply.lex as lex
 
@@ -76,6 +76,8 @@ class Scanner:
 
     t_ignore = '  \t'
 
+    GOT_LEXICAL_ERROR = False
+
     # Builds the lexer
     def __init__(self, **kwargs):
         self.lexer = lex.lex(module=self, **kwargs)
@@ -124,4 +126,5 @@ class Scanner:
                   ' - missing closing double-quote character in the line')
         else:
             print(f"Error({t.lineno}): Illegal character '{t.value[0]}'")
+        Scanner.GOT_LEXICAL_ERROR = True
         t.lexer.skip(1)

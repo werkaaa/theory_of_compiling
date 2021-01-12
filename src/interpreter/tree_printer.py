@@ -1,4 +1,4 @@
-from interpreter.ast import *
+from .ast import *
 
 
 # noinspection PyPep8Naming

@@ -1,7 +1,7 @@
-from interpreter.ast import *
-from interpreter.memory import *
-from interpreter.exceptions import *
-from interpreter.visit import *
+from .ast import *
+from .memory import *
+from .exceptions import *
+from .visit import *
 import numpy as np
 import operator as op
 import sys
@@ -22,6 +22,12 @@ class Interpreter(object):
             '.-': op.sub,
             '.*': op.mul,
             './': op.truediv,
+            '<': op.lt,
+            '>': op.gt,
+            '<=': op.le,
+            '>=': op.ge,
+            '!=': op.ne,
+            '==': op.eq,
         }
 
     @on('node')
@@ -37,14 +43,19 @@ class Interpreter(object):
     def visit(self, node):
         right = self.visit(node.right)
 
-        if len(node.operator) == 2:
+        if len(node.operator) == 2:  # operator of type: +=, -=, *=, /=
             left = self.visit(node.left)
             right = self.operators[node.operator[0]](left, right)
 
         if isinstance(node.left, Identifier):
             self.memory_stack.insert(node.left.name, right)
+        # else:
+        #     if isinstance(node.left.array, String):
+        #         print('string')
+        #     elif isinstance(node.left.array, Identifier):
+        #         left = self.visit(node.left)
 
-        # TODO: slicing przy assignment
+# TODO: slicing przy assignment
 
     @when(For)
     def visit(self, node):
@@ -100,10 +111,21 @@ class Interpreter(object):
 
     @when(ArrayElement)
     def visit(self, node):
-        # TODO: tu zapewne trzeba będzie pokombinować jak ostatnio ze slicingiem
         array = self.visit(node.array)
         ids = self.visit(node.ids)
-        return array[ids]
+        if isinstance(array, str):
+            if len(ids) == 2:
+                ids = ids[1]
+            else:
+                ids = ids[0]
+            if isinstance(ids, range):
+                start = int(ids.start) + 1
+                end = int(ids.stop) + 1
+            else:
+                start = ids + 1
+                end = start + 1
+            return array[start:end]
+        return array[tuple(ids)]
 
     # Expressions
     @when(IntNum)
@@ -140,8 +162,9 @@ class Interpreter(object):
 
     @when(BooleanExpression)
     def visit(self, node):
-        # TODO boolean expression
-        pass
+        left = self.visit(node.left)
+        right = self.visit(node.right)
+        return self.operators[node.operator](left, right)
 
     @when(MatrixFunction)
     def visit(self, node):
@@ -213,10 +236,4 @@ class Interpreter(object):
         for element in node.elements:
             self.visit(element)
 
-# TODO W mainie trzeba zmienić, żeby interpreter odpalał się wtw gdy nie ma syntax error i type_checker odpalił sie poprawnie
-#  pewnie wystarczy do tego jakaś flaga, która zmienia się w razie błędu (może specjalna funkcja w type_checker która printuje treść błędu i ustawia correct na False?
-
-# TODO ustawianie typu elementu w matrix binary operation w type_checker gdy zwraca ona array lub matrix binary operation z użyciem
-#  słownika (to co pisałam dzisiaj)
-
-# TODO potestować zwłaszcza na przykładach prowadzącego
+#  TODO potestować zwłaszcza na przykładach prowadzącego

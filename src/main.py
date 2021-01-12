@@ -1,6 +1,6 @@
 import sys
 
-from interpreter import parser, type_checker, scanner, interpreter
+import interpreter as inter
 
 DEBUG = False
 
@@ -13,15 +13,21 @@ if __name__ == '__main__':
         print("Cannot open {0} file".format(filename))
         sys.exit(0)
 
-    lexer = scanner.Scanner().lexer
-    parser = parser.Parser(lexer=lexer).parser
+    lexer = inter.Scanner()
+    parser = inter.Parser(lexer=lexer)
     text = file.read()
     ast = parser.parse(text)
-    if ast is not None:
-        if DEBUG:
-            ast.printTree()
-        typeChecker = type_checker.TypeChecker()
-        typeChecker.visit(ast)
 
-        interpreter = interpreter.Interpreter()
-        interpreter.visit(ast)
+    if ast is None or inter.Parser.GOT_SYNTAX_ERROR or inter.Scanner.GOT_LEXICAL_ERROR:
+        sys.exit(0)
+
+    if DEBUG:
+        ast.printTree()
+
+    typeChecker = inter.TypeChecker()
+    typeChecker.visit(ast)
+    if typeChecker.GOT_ERROR:
+        sys.exit(0)
+
+    interpreter = inter.Interpreter()
+    interpreter.visit(ast)
