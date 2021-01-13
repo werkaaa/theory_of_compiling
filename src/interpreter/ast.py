@@ -112,7 +112,7 @@ class String(Value):
     def __init__(self, value):
         super().__init__()
         self.type = 'STRING'
-        self.value = '"' + value + '"'
+        self.value = value
 
 
 # noinspection PyShadowingBuiltins

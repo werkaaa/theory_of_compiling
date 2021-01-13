@@ -71,17 +71,20 @@ class TypeChecker(NodeVisitor):
               {
                 'INTNUM'   : 'INTNUM',
                 'FLOATNUM' : 'FLOATNUM',
+                'unknown'  : 'unknown'
               }),
             'FLOATNUM' : defaultdict(lambda: 'error_op_not_sup',
               {
                 'INTNUM'   : 'FLOATNUM',
                 'FLOATNUM' : 'FLOATNUM',
+                'unknown' : 'unknown',
               }),
 
             'array'                     : defaultdict(lambda: 'error_op_not_sup'),
             'TRANSPOSE'                 : defaultdict(lambda: 'error_op_not_sup'),
             'matrix_binary_operation'   : defaultdict(lambda: 'error_op_not_sup'),
             'STRING'                    : defaultdict(lambda: 'error_op_not_sup'),
+            'unknown'                   : 'unknown',
           })
 
         matrix_mul_dict = defaultdict(lambda: 'error_op_not_sup',
@@ -658,8 +661,14 @@ class TypeChecker(NodeVisitor):
         if result_type == 'array':
             # This line deletes preceding dot in elementwise operations
             operator = node.operator[-1]
-            node.element_type = self.get_type(operator, expr_left.element_type,
-                                              expr_right.element_type)
+            element_left_type = expr_left.element_type
+            element_right_type = expr_right.element_type
+            if element_left_type in ['array', 'TRANSPOSE', 'unary_minus', 'matrix_bin_op']:
+                element_left_type = expr_left.list.elements[0].element_type
+            if element_right_type in ['array', 'TRANSPOSE', 'unary_minus', 'matrix_bin_op']:
+                element_right_type = expr_right.list.elements[0].element_type
+            node.element_type = self.get_type(operator, element_left_type,
+                                              element_right_type)
 
             if (expr_left.num_cols != 'unknown' and
                     expr_right.num_rows != 'unknown' and
@@ -716,7 +725,13 @@ class TypeChecker(NodeVisitor):
             if expr_left.element_type == 'unknown' or expr_right.element_type == 'unknown':
                 node.element_type = 'unknown'
             else:
-                element_type = self.get_type(node.operator, expr_left.element_type, expr_right.element_type)
+                element_left_type = expr_left.element_type
+                element_right_type = expr_right.element_type
+                if element_left_type in ['array', 'TRANSPOSE', 'unary_minus', 'matrix_bin_op']:
+                    element_left_type = expr_left.list.elements[0].element_type
+                if element_right_type in ['array', 'TRANSPOSE', 'unary_minus', 'matrix_bin_op']:
+                    element_right_type = expr_right.list.elements[0].element_type
+                element_type = self.get_type(node.operator[1], element_left_type, element_right_type)
                 if element_type == 'error_op_not_sup':
                     print((f'ERROR in line {node.lineno}\n'
                            f'Operation {node.operator} not supported between array of {type_left} '
@@ -744,11 +759,15 @@ class TypeChecker(NodeVisitor):
                 self.GOT_ERROR = True
                 node.num_rows = 'unknown'
                 node.num_cols = 'unknown'
+                node.element_type = 'unknown'
                 return node.type
             else:
                 node.num_rows = num_rows
                 node.num_cols = num_cols
-                node.element_type = expr_left.element_type
+                element_left_type = expr_left.element_type
+                if element_left_type in ['array', 'TRANSPOSE', 'unary_minus', 'matrix_bin_op']:
+                    element_left_type = expr_left.list.elements[0].element_type
+                node.element_type = element_left_type
                 return result_type
 
         print((f'ERROR in line {node.lineno}\n'
@@ -806,7 +825,10 @@ class TypeChecker(NodeVisitor):
             else:
                 node.num_rows = 'unknown'
         if parameter_type == 'INTNUM':
-            node.num_rows = parameter.value
+            if hasattr(parameter, 'value'):
+                node.num_rows = parameter.value
+            else:
+                node.num_rows = 'unknown'
         else:
             print((f'ERROR in line {node.lineno}\n'
                    f'Matrix function {node.function} cannot take '
@@ -860,6 +882,7 @@ class TypeChecker(NodeVisitor):
     def visit_Transpose(self, node):
         value = node.value
         value_type = self.visit(value)
+        node.element_type = value.element_type if hasattr(value, 'element_type') else 'unknown'
         if value_type == 'ID':
             if not self.variable_declared(value):
                 value_type = 'unknown'
@@ -898,7 +921,7 @@ class TypeChecker(NodeVisitor):
                 start_value = self.symbol_table.get(start_value.name)
                 start_type = self.visit(start_value)
 
-        if start_type == 'ID':
+        if end_type == 'ID':
             if not self.variable_declared(end_value):
                 end_type = 'unknown'
             else:

@@ -1,14 +1,17 @@
-from .ast import *
-from .memory import *
-from .exceptions import *
-from .visit import *
-import numpy as np
 import operator as op
 import sys
+
+import numpy as np
+
+from .ast import *
+from .exceptions import *
+from .memory import *
+from .visit import *
 
 sys.setrecursionlimit(10000)
 
 
+# noinspection PyBroadException
 class Interpreter(object):
 
     def __init__(self):
@@ -45,17 +48,59 @@ class Interpreter(object):
 
         if len(node.operator) == 2:  # operator of type: +=, -=, *=, /=
             left = self.visit(node.left)
-            right = self.operators[node.operator[0]](left, right)
+            try:
+                right = self.operators[node.operator[0]](left, right)
+            except:
+                print(f'Runtime error: Invalid types {type(left)} {type(right)} with {node.operator}: line {node.lineno}')
+                sys.exit(0)
 
         if isinstance(node.left, Identifier):
             self.memory_stack.insert(node.left.name, right)
-        # else:
-        #     if isinstance(node.left.array, String):
-        #         print('string')
-        #     elif isinstance(node.left.array, Identifier):
-        #         left = self.visit(node.left)
+        else:
+            self.visit(node.left)
+            ids = self.visit(node.left.ids)
+            array = self.memory_stack.get(node.left.array.name)
 
-# TODO: slicing przy assignment
+            if isinstance(array, str):
+                if len(ids) == 2:
+                    if ids[0] != 0:
+                        print(f'Runtime error: Wrong indexing: line {node.lineno}')
+                        sys.exit(0)
+                    else:
+                        ids = ids[1]
+                if isinstance(ids[0], range):
+                    fst_idx = ids[0].start
+                    snd_idx = ids[0].stop
+                else:
+                    fst_idx = ids[0]
+                    snd_idx = fst_idx + 1
+                try:
+                    result = array[:fst_idx] + right + array[snd_idx:]
+                except IndexError:
+                    print(f'Runtime error: Wrong indexing: line {node.lineno}')
+                    sys.exit(0)
+                self.memory_stack.insert(node.left.array.name, result)
+            else:
+                if len(ids) == 2:
+                    if isinstance(ids[0], range):
+                        fst_idx = slice(ids[0].start, ids[0].stop)
+                    else:
+                        fst_idx = ids[0]
+                    if isinstance(ids[1], range):
+                        snd_idx = slice(ids[1].start, ids[1].stop)
+                    else:
+                        snd_idx = ids[1]
+                    try:
+                        array[fst_idx, snd_idx] = right
+                    except IndexError:
+                        print(f'Runtime error: Wrong indexing: line {node.lineno}')
+                        sys.exit(0)
+                else:
+                    try:
+                        array[tuple(ids)] = right
+                    except IndexError:
+                        print(f'Runtime error: Wrong indexing: line {node.lineno}')
+                        sys.exit(0)
 
     @when(For)
     def visit(self, node):
@@ -124,8 +169,35 @@ class Interpreter(object):
             else:
                 start = ids + 1
                 end = start + 1
-            return array[start:end]
-        return array[tuple(ids)]
+            try:
+                result = array[start:end]
+            except IndexError:
+                print(f'Runtime error: Wrong indexing: line {node.lineno}')
+                sys.exit(0)
+            return result
+        else:
+            if len(ids) == 2:
+                if isinstance(ids[0], range):
+                    fst_idx = slice(ids[0].start, ids[0].stop)
+                else:
+                    fst_idx = ids[0]
+                if isinstance(ids[1], range):
+                    snd_idx = slice(ids[1].start, ids[1].stop)
+                else:
+                    snd_idx = ids[1]
+                try:
+                    result = array[fst_idx, snd_idx]
+                except IndexError:
+                    print(f'Runtime error: Wrong indexing: line {node.lineno}')
+                    sys.exit(0)
+                return result
+            else:
+                try:
+                    result = array[tuple(ids)]
+                except IndexError:
+                    print(f'Runtime error: Wrong indexing: line {node.lineno}')
+                    sys.exit(0)
+                return result
 
     # Expressions
     @when(IntNum)
@@ -172,17 +244,17 @@ class Interpreter(object):
         num_rows = parameter[0]
         num_cols = parameter[1] if len(parameter) > 1 else None
         if node.function == 'eye':
-            return np.eye(num_rows)
+            return np.eye(num_rows, dtype=int)
         elif node.function == 'ones':
             if num_cols is not None:
-                return np.ones((num_rows, num_cols))
+                return np.ones((num_rows, num_cols), dtype=int)
             else:
-                return np.ones(num_rows)
+                return np.ones(num_rows, dtype=int)
         elif node.function == 'zeros':
             if num_cols is not None:
-                return np.zeros((num_rows, num_cols))
+                return np.zeros((num_rows, num_cols), dtype=int)
             else:
-                return np.zeros(num_rows)
+                return np.zeros(num_rows, dtype=int)
 
     @when(UnaryMinus)
     def visit(self, node):
@@ -235,5 +307,3 @@ class Interpreter(object):
     def visit(self, node):
         for element in node.elements:
             self.visit(element)
-
-#  TODO potestować zwłaszcza na przykładach prowadzącego
